@@ -1,0 +1,61 @@
+/* Price badge appended to the end of each search result's bold title line
+   on axis.com/search. Inline (not overlaying an image, unlike the Product
+   Selector badges), so a small rounded pill reads better than the flush
+   edge-to-edge style used there. */
+
+.axis-search-price-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(255, 204, 51, 0.85);
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+/* Chipset badge - only shown when a search result names one specific
+   model (never a whole series), matching the dark pill style used for the
+   equivalent badge on the Product Selector. Sits just before the price
+   badge so the two read together as "chipset, then price".
+
+   Google's Programmable Search Engine widget applies its own link-color
+   rules (with !important, in some cases targeting all descendants of the
+   title link) that can otherwise bleed a blue link color into this badge's
+   text instead of the white it's supposed to have. The higher-specificity
+   selector plus !important below makes sure our color always wins. */
+a.gs-title .axis-search-chipset-badge,
+.axis-search-chipset-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background-color: #1a1a1a !important;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+  text-decoration: none !important;
+}
+
+/* Favorite toggle (♡ -> 🧡) - only appended for a specific single-model
+   match (see search-content.js), right after the chipset/price badges.
+   Same !important overrides as the chipset badge above, for the same
+   reason: Google's CSE widget applies its own link-color/underline rules to
+   descendants of the title link that would otherwise bleed into this. */
+a.gs-title .axis-search-fav-badge,
+.axis-search-fav-badge {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 13px;
+  cursor: pointer !important;
+  text-decoration: none !important;
+}

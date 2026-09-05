@@ -1,0 +1,54 @@
+/* Find Cams - shared by the popup's side column (#findCamsColumn) and the
+   full-page find-cams.html. Uses the host page's theme variables
+   (--bg, --text, --muted, --border, --accent, --accent-strong, --accent-ink,
+   --row-hover), so it follows whichever light/dark theme the host applies. */
+.fc { display: flex; flex-direction: column; gap: 8px; padding: 10px; font-size: 12.5px; color: var(--text); min-width: 0; }
+/* The subnet + Scan row is the primary control here, so it sits on the same
+   tinted-yellow panel the popup uses for its tab buttons and search field,
+   with a bigger input and Scan button - a bare row of 1px-bordered controls
+   was easy to miss under the results list. */
+.fc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px; background: rgba(255, 204, 51, 0.2); border: 1px solid var(--accent-strong); border-radius: 6px; }
+.fc-controls input[type=text] { font: inherit; font-size: 13.5px; padding: 7px 9px; border: 1px solid var(--accent-strong); border-radius: 6px; background: var(--bg); color: var(--text); width: 124px; }
+.fc-controls input[type=text]:focus { outline: 2px solid var(--accent-strong); outline-offset: 0; }
+.fc-btn { border: 1px solid var(--border); background: var(--bg); color: var(--text); padding: 7px 11px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px; text-decoration: none; white-space: nowrap; }
+.fc-btn:hover { background: var(--row-hover); }
+.fc-btn.primary { background: var(--accent); border-color: var(--accent-strong); color: var(--accent-ink); font-weight: 700; }
+.fc-btn:disabled { opacity: .55; cursor: default; }
+.fc-chips { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; } /* subnet presets always on their own line */
+.fc-chip { font-size: 11px; padding: 3px 8px; border-radius: 999px; }
+.fc progress { width: 100%; height: 9px; border-radius: 999px; accent-color: var(--accent-strong); }
+/* Chrome renders the track/value as one background - #ddd-ish by default -
+   independent of accent-color, so at 9px tall (up from 5px) an unstyled
+   track reads as a solid grey bar with no visible "how far along" cue
+   until it's nearly full. Match it to the app's own border/bg tokens so
+   the filled portion (still accent-color) actually stands out. */
+.fc progress::-webkit-progress-bar { background: var(--border); border-radius: 999px; }
+/* Defining ::-webkit-progress-bar takes the value fill out of accent-color's
+   hands too - Chromium falls back to its own default green rather than
+   var(--accent-strong) unless the fill color is set here explicitly. */
+.fc progress::-webkit-progress-value { background: var(--accent-strong); border-radius: 999px; }
+.fc progress::-moz-progress-bar { background: var(--accent-strong); border-radius: 999px; }
+.fc-status { color: var(--muted); font-size: 12px; min-height: 1.2em; }
+.fc-list { display: flex; flex-direction: column; gap: 6px; }
+/* Model + IP are the headline (what you're actually here for); chipset is
+   a small badge tucked in the top-right corner rather than competing for
+   attention; serial/firmware are secondary, each independently
+   click-to-copy. */
+.fc-card {
+  border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "model chip" "ip chip" "meta meta";
+  gap: 2px 8px;
+}
+.fc-card:hover { background: var(--row-hover); }
+.fc-model { grid-area: model; font-weight: 700; }
+.fc-model .fc-full { font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 4px; }
+.fc-ip { grid-area: ip; font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 13px; color: inherit; text-decoration: none; }
+.fc-ip:hover { text-decoration: underline; }
+.fc-chipset { grid-area: chip; align-self: start; justify-self: end; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); white-space: nowrap; }
+.fc-chipset.unknown { background: transparent; border: 1px solid var(--border); color: var(--muted); font-weight: 400; }
+.fc-meta { grid-area: meta; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.fc-copy { cursor: copy; } .fc-copy:hover { text-decoration: underline dotted; color: var(--text); }
+.fc-empty { color: var(--muted); text-align: center; padding: 14px 0; }
+.fc-hint { font-size: 11px; color: var(--muted); line-height: 1.45; margin: 0; }

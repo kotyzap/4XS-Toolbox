@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4XS Toolbox — 最適な Axis カメラを見つける</title>
+<meta name="description" content="4XS Toolbox は、チップセット・定価・画角を Axis の各カメラの隣に表示します。製品セレクター、axis.com 検索、製品ページに対応。描いた撮影範囲からカメラを選ぶマップツール、ネットワーク上の Axis 機器を探すスキャナー、よく使うカテゴリーのショートカットも搭載。Chrome と Firefox で無料。">
+<link rel="alternate" hreflang="en" href="index.html">
+<link rel="alternate" hreflang="ja" href="index.ja.html">
+<script>
+  // Applied synchronously, before first paint, so the page never flashes the
+  // wrong theme on load. Mirrors the extension's own light/dark toggle:
+  // remembers the visitor's choice, otherwise follows the OS preference.
+  (function () {
+    var KEY = "axis-overlay-docs-theme";
+    var stored = null;
+    try { stored = localStorage.getItem(KEY); } catch (e) {}
+    var theme = stored || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #FFC800;
+    --yellow-deep: #B78E00;
+    --void-fixed: #0E0E0E; /* always-dark text/border for elements sitting directly on the yellow accent (brand mark, ticker, step numbers) - constant across both themes so the brand mark reads the same either way */
+
+    /* Light theme (default) */
+    --bg: #FAFAF7;
+    --bg-alt: #F0EFE8;
+    --surface: #FFFFFF;
+    --ink: #121212;
+    --mute: #56544D;
+    --mute-2: #7A7870;
+    --border: #DDDACF;
+    --border-strong: #C9C6B9;
+    --eyebrow: #8A6B00;
+    --grid-tint: rgba(18, 18, 18, 0.035);
+  }
+
+  html[data-theme="dark"] {
+    --bg: #0E0E0E;
+    --bg-alt: #1A1A1A;
+    --surface: #1E1E1E;
+    --ink: #F4F3EE;
+    --mute: #B9B8B2;
+    --mute-2: #9B9B9B;
+    --border: #2C2C2C;
+    --border-strong: #454545;
+    --eyebrow: #FFC800;
+    --grid-tint: rgba(244, 243, 238, 0.045);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Archivo', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  a { color: inherit; }
+  img { max-width: 100%; display: block; }
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    font-size: 0.9em;
+    color: var(--ink);
+  }
+  ::selection { background: var(--yellow); color: var(--void-fixed); }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 15px;
+    padding: 12px 24px;
+    letter-spacing: 0.01em;
+    border: 1px solid transparent;
+  }
+  .btn svg { width: 16px; height: 16px; fill: currentColor; }
+  .btn-primary { background: var(--yellow); color: var(--void-fixed); box-shadow: 4px 4px 0 var(--void-fixed); transition: transform 0.1s ease, box-shadow 0.1s ease; }
+  .btn-primary:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--void-fixed); }
+  .btn-ghost { background: transparent; color: var(--ink); border-color: var(--border-strong); font-weight: 700; }
+  .btn-ghost:hover { border-color: var(--yellow); color: var(--yellow-deep); }
+  html[data-theme="dark"] .btn-ghost:hover { color: var(--yellow); }
+  .btn-nav { background: var(--yellow); color: var(--void-fixed); font-weight: 800; font-size: 13px; padding: 9px 16px; }
+  .btn-nav:hover { background: #fff; }
+
+  /* ---------- Theme toggle ---------- */
+  .theme-toggle {
+    width: 36px; height: 36px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--border); color: var(--ink);
+    cursor: pointer; padding: 0;
+  }
+  .theme-toggle:hover { border-color: var(--yellow); color: var(--yellow-deep); }
+  html[data-theme="dark"] .theme-toggle:hover { color: var(--yellow); }
+  .theme-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+  .theme-toggle .icon-sun { display: none; }
+  .theme-toggle .icon-moon { display: block; }
+  html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+  html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+  /* ---------- Language switch ---------- */
+  .lang-switch {
+    display: flex; align-items: center; flex: none;
+    border: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  }
+  .lang-switch a, .lang-switch span {
+    display: flex; align-items: center; justify-content: center;
+    height: 34px; padding: 0 9px;
+    text-decoration: none; color: var(--mute);
+  }
+  .lang-switch a:hover { color: var(--yellow-deep); }
+  html[data-theme="dark"] .lang-switch a:hover { color: var(--yellow); }
+  .lang-switch .is-current { background: var(--yellow); color: var(--void-fixed); font-weight: 700; }
+  .lang-switch .lang-sep { padding: 0; width: 1px; height: 34px; background: var(--border); }
+
+  /* ---------- Nav ---------- */
+  header {
+    position: sticky; top: 0; z-index: 60;
+    background: var(--bg);
+    border-bottom: 4px solid var(--yellow);
+    transition: background 0.15s ease;
+  }
+  .nav-inner {
+    height: 64px;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .brand-mark {
+    width: 34px; height: 34px; flex: none;
+    background: var(--yellow);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 15px; color: var(--void-fixed); letter-spacing: -0.02em;
+  }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+  .brand-text .t1 { color: var(--ink); font-weight: 800; font-size: 15px; letter-spacing: 0.01em; }
+  .brand-text .t2 { color: var(--mute); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; }
+  .nav-links { display: flex; align-items: center; gap: 18px; }
+  .nav-links a:not(.btn-nav) { color: var(--mute); text-decoration: none; font-size: 13.5px; font-weight: 600; letter-spacing: 0.02em; }
+  .nav-links a:not(.btn-nav):hover { color: var(--yellow-deep); }
+  html[data-theme="dark"] .nav-links a:not(.btn-nav):hover { color: var(--yellow); }
+  .icon-github { width: 15px; height: 15px; fill: currentColor; }
+  .icon-github-link { color: var(--mute); display: flex; }
+  .icon-github-link:hover { color: var(--yellow-deep); }
+  html[data-theme="dark"] .icon-github-link:hover { color: var(--yellow); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: var(--bg); color: var(--ink);
+    padding: 40px 28px 48px;
+    position: relative; overflow: hidden;
+    transition: background 0.15s ease;
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: repeating-linear-gradient(90deg, var(--grid-tint) 0, var(--grid-tint) 1px, transparent 1px, transparent 96px);
+  }
+  .hero .wrap { position: relative; }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 36px; align-items: center; }
+  .hero-copy { min-width: 0; }
+  .tag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .tag {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 6px 12px; border: 1px solid var(--border); color: var(--mute-2);
+  }
+  .tag-accent { color: var(--eyebrow); border-color: rgba(138,107,0,0.4); }
+  html[data-theme="dark"] .tag-accent { color: var(--yellow); border-color: rgba(255,200,0,0.45); }
+  .hero h1 {
+    margin: 0 0 14px; font-weight: 900; letter-spacing: -0.03em; line-height: 0.98;
+    font-size: clamp(28px, 3.6vw, 54px); max-width: 560px; text-transform: uppercase;
+  }
+  .hero h1 span { color: var(--yellow-deep); }
+  /* A trailing card that would otherwise leave a hole in the two-column grid
+     spans the full width instead, laid out side-by-side. */
+  .feature-card.card-wide {
+    grid-column: 1 / -1;
+    display: grid; grid-template-columns: 1fr 1fr; align-items: center;
+  }
+  .feature-card.card-wide .feature-figure { height: 100%; display: flex; align-items: center; justify-content: center; }
+  @media (max-width: 860px) {
+    .feature-card.card-wide { grid-template-columns: 1fr; }
+  }
+  /* Both hero lines are spans now (so the script can swap them per language),
+     but only the second one is the yellow one. */
+  .hero h1 #hero-h1a { color: var(--ink); }
+  html[data-theme="dark"] .hero h1 span { color: var(--yellow); }
+  /* Larger than the original 15.5px so the hero copy fills the left column
+     next to a tall screenshot. The width cap is lifted to the column width
+     (~547px), which at this size is around 60 characters per line - still
+     inside the comfortable 45-75 range for reading. */
+  .hero .sub { margin: 0 0 20px; max-width: 100%; font-size: 17.5px; line-height: 1.62; color: var(--mute); }
+  .hero .sub a { color: var(--ink); text-decoration-color: var(--yellow); }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
+  .stat-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--border); border-bottom: none;
+    max-width: 760px;
+  }
+  .stat-strip div { padding: 8px 20px; border-right: 1px solid var(--border); }
+  .stat-strip div:last-child { border-right: none; }
+  .stat-num { font-weight: 900; font-size: 22px; color: var(--yellow-deep); letter-spacing: -0.02em; }
+  html[data-theme="dark"] .stat-num { color: var(--yellow); }
+  .stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
+  .hero-shot { margin: 0; border: 1px solid var(--border); background: var(--bg-alt); width: 100%; }
+  .hero-shot img { width: 100%; height: auto; }
+
+  /* ---------- Ticker ---------- */
+  .ticker {
+    background: var(--yellow); border-top: 1px solid var(--void-fixed); border-bottom: 1px solid var(--void-fixed);
+    overflow: hidden; padding: 10px 0;
+  }
+  .ticker-track {
+    display: flex; gap: 34px; white-space: nowrap;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; font-weight: 600; color: var(--void-fixed); letter-spacing: 0.04em;
+    width: max-content;
+    animation: ticker-scroll 32s linear infinite;
+  }
+  .ticker:hover .ticker-track { animation-play-state: paused; }
+  .ticker-track span { flex: none; }
+  .ticker-track .sep { opacity: 0.45; }
+  @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* ---------- Section heading ---------- */
+  .eyebrow-row { display: flex; align-items: baseline; gap: 18px; margin-bottom: 14px; }
+  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.2em; font-weight: 600; color: var(--eyebrow); }
+  html[data-theme="dark"] .eyebrow { color: var(--yellow); }
+  .rule { flex: 1; height: 1px; background: var(--border); }
+  .section-title { margin: 0 0 14px; font-weight: 900; letter-spacing: -0.025em; text-transform: uppercase; font-size: clamp(28px, 3.6vw, 46px); }
+  .section-sub { margin: 0 0 44px; max-width: 640px; font-size: 16px; line-height: 1.6; color: var(--mute); }
+
+  section { padding: 96px 28px; transition: background 0.15s ease; }
+
+  /* ---------- Features ---------- */
+  .features { background: var(--bg); }
+  .feature-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
+    background: var(--border); border: 1px solid var(--border);
+  }
+  .feature-card { background: var(--surface); border: none; box-shadow: none; display: flex; flex-direction: column; }
+  .feature-figure { margin: 0; border-bottom: 1px solid var(--border); }
+  .feature-figure-inset { background: var(--bg-alt); display: flex; justify-content: center; padding: 20px 20px 0; }
+  .feature-body { padding: 24px 26px 28px; }
+  .feature-kicker { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.18em; color: var(--eyebrow); font-weight: 600; margin-bottom: 8px; }
+  html[data-theme="dark"] .feature-kicker { color: var(--yellow); }
+  .feature-body h3 { margin: 0 0 10px; font-weight: 800; font-size: 21px; letter-spacing: -0.01em; }
+  .feature-body p { margin: 0; color: var(--mute); font-size: 15px; line-height: 1.6; }
+  .feature-body strong { color: var(--ink); }
+
+  /* ---------- Sorting (live, checkbox-driven demo) ---------- */
+  .fovmap { background: var(--bg-alt); }
+  .fovmap-shot { margin: 32px 0 36px; border: 1px solid var(--border); background: var(--bg); box-shadow: none; }
+  .fovmap .updates-list { max-width: 900px; }
+  .sorting { background: var(--bg); }
+
+  /* A real checkbox (not a decorative one) drives everything below it via
+     the CSS :checked + general-sibling combinator - no JS needed, and it
+     behaves like an actual checkbox (click, keyboard, screen reader) rather
+     than a fake button pretending to be one. */
+  .sort-toggle-row { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+  .sort-checkbox {
+    appearance: none; -webkit-appearance: none;
+    width: 18px; height: 18px; flex: none;
+    border: 1px solid var(--mute-2);
+    background: var(--surface);
+    margin: 0; position: relative; cursor: pointer;
+  }
+  .sort-checkbox:checked { background: var(--ink); border-color: var(--ink); }
+  .sort-checkbox:checked::after {
+    content: ""; position: absolute; left: 5px; top: 2px;
+    width: 5px; height: 9px;
+    border: solid var(--yellow); border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .sort-toggle-label {
+    font-size: 15px; font-weight: 700; cursor: pointer; user-select: none;
+  }
+  .try-live-tag {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em;
+    color: var(--eyebrow); background: rgba(138,107,0,0.12);
+    padding: 3px 9px; margin-left: 2px;
+  }
+  html[data-theme="dark"] .try-live-tag { color: var(--yellow); background: rgba(255,200,0,0.12); }
+
+  .compare-live { position: relative; border: 1px solid var(--border); background: var(--surface); }
+  .compare-live img { width: 100%; height: auto; display: block; }
+  .compare-live .shot-on { position: absolute; inset: 0; opacity: 0; transition: opacity 0.2s ease; }
+  .compare-live .shot-off { position: relative; opacity: 1; transition: opacity 0.2s ease; }
+  .sort-checkbox:checked ~ .compare-live .shot-off { opacity: 0; }
+  .sort-checkbox:checked ~ .compare-live .shot-on { opacity: 1; }
+
+  .live-caption { margin: 14px 0 0; font-size: 14px; color: var(--mute); }
+  .live-caption .caption-off { display: flex; align-items: center; gap: 10px; }
+  .live-caption .caption-on { display: none; align-items: center; gap: 10px; }
+  .sort-checkbox:checked ~ .live-caption .caption-off { display: none; }
+  .sort-checkbox:checked ~ .live-caption .caption-on { display: flex; }
+  .state-tag { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; padding: 4px 10px; flex: none; }
+  .state-tag.off { background: var(--border); color: var(--ink); }
+  .state-tag.on { background: var(--yellow); color: var(--void-fixed); font-weight: 600; }
+
+  /* ---------- Updates ---------- */
+  .updates { background: var(--bg-alt); }
+  .updates-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 48px; align-items: center; }
+  .updates-shot { margin: 0; border: 1px solid var(--border); background: var(--bg-alt); box-shadow: none; }
+  .updates-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+  .updates-list li { font-size: 15px; line-height: 1.6; color: var(--mute); }
+  .updates-list strong { color: var(--ink); }
+
+  /* ---------- Install ---------- */
+  .install { background: var(--bg); }
+  .install-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: start; }
+  .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .steps li { display: flex; gap: 18px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .steps li:last-child { border-bottom: none; }
+  .step-num {
+    flex: none; width: 32px; height: 32px; background: var(--void-fixed); color: var(--yellow);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 13px;
+  }
+  .step-text { font-size: 15.5px; line-height: 1.55; color: var(--mute); padding-top: 4px; }
+  .step-text strong { color: var(--ink); }
+  .step-text a { font-weight: 600; }
+  .install-shot { margin: 0; border: 1px solid var(--border); background: var(--bg-alt); box-shadow: none; }
+  .install-cta {
+    background: var(--surface); border: 1px solid var(--ink);
+    box-shadow: 5px 5px 0 var(--yellow);
+    padding: 30px 26px; text-align: center;
+  }
+  .install-cta-mark {
+    width: 56px; height: 56px; margin: 0 auto 16px;
+    background: var(--yellow); color: var(--void-fixed);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 22px; letter-spacing: -0.02em;
+  }
+  .install-cta-name { font-weight: 800; font-size: 16.5px; margin-bottom: 5px; }
+  .install-cta-meta {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--mute); margin-bottom: 22px;
+  }
+  .install-cta .btn { width: 100%; justify-content: center; }
+  .install-cta-note { font-size: 13px; line-height: 1.55; color: var(--mute); margin: 16px 0 0; }
+
+  /* ---------- Sources ---------- */
+  .sources { background: var(--bg-alt); border-top: 1px solid var(--border); }
+  .sources-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
+    background: var(--border); border: 1px solid var(--border);
+  }
+  .source-card { background: var(--surface); border: none; padding: 26px 26px 30px; }
+  .source-tag { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.16em; display: inline-block; padding: 5px 11px; font-weight: 600; margin-bottom: 16px; }
+  .source-tag.light { background: var(--yellow); color: var(--void-fixed); }
+  .source-tag.dark { background: var(--void-fixed); color: var(--yellow); }
+  .source-card p { margin: 0; color: var(--mute); font-size: 14.5px; line-height: 1.65; }
+  .source-card a { font-weight: 600; }
+
+  /* ---------- Footer ---------- */
+  footer { background: var(--bg-alt); color: var(--mute); padding: 48px 28px 56px; border-top: 4px solid var(--yellow); }
+  .footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 24px; }
+  .footer-brand { max-width: 560px; }
+  .footer-brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .footer-mark { width: 26px; height: 26px; background: var(--yellow); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; color: var(--void-fixed); }
+  .footer-brand-row span.name { color: var(--ink); font-weight: 800; font-size: 14px; }
+  .footer-brand p { margin: 0; font-size: 12.5px; line-height: 1.6; }
+  .footer-links { display: flex; gap: 24px; font-size: 13.5px; font-weight: 600; }
+  .footer-links a { color: var(--mute); text-decoration: none; }
+  .footer-links a:hover { color: var(--yellow-deep); }
+  html[data-theme="dark"] .footer-links a:hover { color: var(--yellow); }
+
+  @media (max-width: 860px) {
+    .install-grid, .feature-grid, .sources-grid, .updates-grid { grid-template-columns: 1fr; }
+    .hero-grid { grid-template-columns: 1fr; gap: 28px; }
+    .hero h1, .hero .sub { max-width: 100%; }
+    .stat-strip { grid-template-columns: repeat(2, 1fr); max-width: 100%; }
+    .stat-strip div:nth-child(2) { border-right: none; }
+  }
+  @media (max-width: 640px) {
+    .hero { padding-top: 28px; }
+    .nav-links a:not(.btn-nav):not(.icon-github-link) { display: none; }
+    section { padding: 64px 20px; }
+  }
+
+  /* ---------- v5.0 additions ---------- */
+  .shot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .shot-pair figure { margin: 0; }
+  .shot-pair img { border: 1px solid var(--border); }
+  .shot-pair figcaption {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--mute-2); padding-top: 10px;
+  }
+  .tool-row { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+  .tool-row.flip > :first-child { order: 2; }
+  .tool-row img { border: 1px solid var(--border); }
+  .tool-copy h3 {
+    margin: 0 0 12px; font-size: clamp(22px, 2.4vw, 32px); font-weight: 900;
+    letter-spacing: -0.02em; text-transform: uppercase; line-height: 1.05;
+  }
+  .tool-copy p { margin: 0 0 14px; color: var(--mute); font-size: 15.5px; line-height: 1.65; }
+  .tool-copy p:last-child { margin-bottom: 0; }
+  .tool-copy strong { color: var(--ink); font-weight: 700; }
+  .spec-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .spec-list li {
+    padding-left: 20px; position: relative; color: var(--mute);
+    font-size: 14.5px; line-height: 1.55;
+  }
+  .spec-list li::before {
+    content: ""; position: absolute; left: 0; top: 8px;
+    width: 8px; height: 8px; background: var(--yellow);
+  }
+  .spec-list strong { color: var(--ink); font-weight: 700; }
+  .narrow-shot { max-width: 300px; margin: 0 auto; }
+  @media (max-width: 860px) {
+    .tool-row, .shot-pair { grid-template-columns: 1fr; gap: 24px; }
+    .tool-row.flip > :first-child { order: 0; }
+  }
+  .lang-hello {
+    margin: 0 0 14px; padding: 14px 16px;
+    border: 1px solid var(--border); background: var(--bg-alt);
+  }
+  .lang-hello .hello-line {
+    margin: 0 0 10px; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink);
+  }
+  .lang-hello .btn { font-size: 13.5px; padding: 10px 18px; }
+  .lang-hello[dir="rtl"] { text-align: right; }
+  .lang-flags { max-width: 274px; }
+  @media (max-width: 640px) {
+    /* The brand's second line ("Chrome & Firefox · v5.0") is long enough to
+       wrap into the nav controls on a phone - the name alone is enough there. */
+    .brand-text .t2 { display: none; }
+    /* Let the brand name ellipsize rather than letting a longer localized
+       CTA label ("Chrome に追加") push the nav past the viewport. */
+    .brand, .brand-text { min-width: 0; }
+    .brand-text .t1 { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nav-inner { gap: 10px; }
+    .btn-nav { padding: 8px 12px; font-size: 12px; }
+    .shot-pair { gap: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <span class="brand-mark">4XS</span>
+      <span class="brand-text">
+        <span class="t1">4XS Toolbox</span>
+        <span class="t2">Chrome ＆ Firefox · v5.0</span>
+      </span>
+    </a>
+    <nav class="nav-links">
+      <a href="#specify">選定</a>
+      <a href="#fovmap">FoV マップ</a>
+      <a href="#network">ネットワーク</a>
+      <a href="#install">インストール</a>
+      <a href="#sources">データ</a>
+      <span class="lang-switch">
+        <a href="index.html" hreflang="en">EN</a>
+        <span class="lang-sep"></span>
+        <span class="is-current">日本語</span>
+      </span>
+      <a class="icon-github-link" href="https://github.com/kotyzap/4XS-Toolbox" target="_blank" rel="noopener" aria-label="GitHub">
+        <svg class="icon-github" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      </a>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <a class="btn btn-nav" href="https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener">Chrome に追加</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="tag-row">
+          <span class="tag tag-accent">Axis カメラ選定ツール · v5.0</span>
+          <span class="tag">無料 · Chrome ＆ Firefox</span>
+        </div>
+        <h1><span id="hero-h1a">最適な</span><br><span id="hero-h1b">Axis カメラを。</span></h1>
+        <p class="sub" id="hero-sub">チップセット、定価、画角 — そしてすでにネットワーク上にある機器。4XS Toolbox は、実際に仕様を決めるときに必要な情報を、いつも見ている場所でカメラの隣に表示します。<a href="https://www.axis.com/support/tools/product-selector" target="_blank" rel="noopener">Axis 製品セレクター</a>、<a href="https://www.axis.com/search" target="_blank" rel="noopener">axis.com 検索</a>、すべての製品・カテゴリーページ、409 SKU を検索できるツールバーのポップアップ、そして描いた撮影範囲からカメラを選ぶマップ。</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" id="hero-cta1" href="https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener">Chrome に追加 — 無料</a>
+          <a class="btn btn-ghost" id="hero-cta2" href="https://github.com/kotyzap/4XS-Toolbox" target="_blank" rel="noopener">ソースコード</a>
+        </div>
+        <div class="stat-strip">
+          <div><div class="stat-num">322</div><div class="stat-label">モデル</div></div>
+          <div><div class="stat-num">409</div><div class="stat-label">価格付き SKU</div></div>
+          <div><div class="stat-num">12</div><div class="stat-label">対応言語</div></div>
+          <div><div class="stat-num">v5.0</div><div class="stat-label">現在のビルド</div></div>
+        </div>
+      </div>
+      <figure class="hero-shot">
+        <img src="img/popup-v5-quick-links.png" alt="The 4XS Toolbox popup open over the axis.com Product categories page: quick links to Selector, Products and My Axis, a row of pinned category buttons (Cameras, Intercoms, Radar, Extras), three tabs for Chipset &amp; MSRP, FoV Map Tool and IP Utility Scanner, a Required FoV slider, a search box with a Filter button, and AXIS Q17 results carrying ARTPEC-9 chipset badges and price badges">
+      </figure>
+    </div>
+  </div>
+</section>
+
+<div class="ticker">
+  <div class="ticker-track">
+    <span>AXIS M1135 Mk II — €499</span><span class="sep">/</span>
+    <span>AXIS M3086-V — €399</span><span class="sep">/</span>
+    <span>AXIS M2036-LE — €469</span><span class="sep">/</span>
+    <span>AXIS P1388 — €1,029</span><span class="sep">/</span>
+    <span>AXIS Q1728 — €1,299</span><span class="sep">/</span>
+    <span>AXIS Q1656-LE — €1,949</span><span class="sep">/</span>
+    <span>AXIS Q1686-DLE — €4,229</span><span class="sep">/</span>
+    <span>AXIS M1135 Mk II — €499</span><span class="sep">/</span>
+    <span>AXIS M3086-V — €399</span><span class="sep">/</span>
+    <span>AXIS M2036-LE — €469</span><span class="sep">/</span>
+    <span>AXIS P1388 — €1,029</span><span class="sep">/</span>
+    <span>AXIS Q1728 — €1,299</span><span class="sep">/</span>
+    <span>AXIS Q1656-LE — €1,949</span><span class="sep">/</span>
+    <span>AXIS Q1686-DLE — €4,229</span><span class="sep">/</span>
+  </div>
+</div>
+
+<section class="features" id="specify">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="eyebrow">01 — 選定</span></div>
+    <h2 class="section-title">カメラを選ぶのに<br>必要な数字を、すべて</h2>
+    <p class="section-sub">チップセットで動く analytics が決まり、画角で現場をカバーできるかが決まり、価格で承認が下りるかが決まります。この 3 つが、いま読んでいるページ上に表示されます — 別タブも表計算も不要です。</p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <figure class="feature-figure feature-figure-inset">
+          <img src="img/v5-popup-catalogue-light.png" alt="The 4XS Toolbox popup Chipset and MSRP tab: a Required FoV slider, a search field with a Filter button, and rows for AXIS Q1728-LE, Q1728, Q1726-LE and Q1726 — each with its part number, an ARTPEC-9 chipset badge with a CamStreamer checkmark, a yellow price badge and a favourite heart" style="width: 62%; max-width: 340px;">
+        </figure>
+        <div class="feature-body">
+          <div class="feature-kicker">FEATURE / 01</div>
+          <h3>カタログ全体をツールバーに</h3>
+          <p>どのタブからでも、<strong>322 モデル・409 の価格付き SKU</strong> をモデル名または Axis 型番で検索できます。各行にはチップセット、定価、そして拡張機能内のすべてのリストで先頭に固定するハートが並びます。モデル名・型番・カテゴリーはクリックでコピーできます。</p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <figure class="feature-figure feature-figure-inset">
+          <img src="img/v5-popup-filter.png" alt="The popup with the Filter popover open: sort options for Best fit, Price low to high, Price high to low and FoV widest first, plus chipset checkboxes for ARTPEC-9, ARTPEC-8, ARTPEC-6/7, ARTPEC-3/4/5 and Ambarella, with ARTPEC-8 ticked and the results list behind narrowed to ARTPEC-8 cameras" style="width: 62%; max-width: 340px;">
+        </figure>
+        <div class="feature-body">
+          <div class="feature-kicker">FEATURE / 02</div>
+          <h3>チップセットで絞り込み、価格や画角で並べ替え</h3>
+          <p>analytics が必要とする ARTPEC／Ambarella 世代に絞り込み、<strong>価格</strong>または<strong>画角の広い順</strong>で並べ替えます。どの並び順でもお気に入りは先頭に固定され、絞り込みはカタログとマップの結果に同時に適用されます。</p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <figure class="feature-figure">
+          <img src="img/inline-badges-overview.png" alt="Axis Product Selector showing M32, M42 and M43 series cards, every one carrying an ARTPEC-8 chipset badge and a yellow price badge">
+        </figure>
+        <div class="feature-body">
+          <div class="feature-kicker">FEATURE / 03</div>
+          <h3>axis.com 上に直接バッジを表示</h3>
+          <p>認識されたすべての製品カードに価格バッジが付き（ホバーで Axis 型番を表示）、CamStreamer にデータがあるモデルにはチップセット表示、CamStreamer ACAP 対応ならチェックマークが付きます。製品セレクター、検索結果、製品・カテゴリーページ、そして<strong>製品比較表</strong>の中にも表示されます。</p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <figure class="feature-figure feature-figure-inset">
+          <img src="img/v5-selector-panel.png" alt="The Filters panel injected into the Axis Product Selector: a FoV Map button, quick links to Products, My Axis, IP Scanner and MSRP list, pinned category buttons, a sort-by-cheapest checkbox, a Required angle slider, an ACAP dropdown set to CamStreamer, and chipset checkboxes" style="width: 62%; max-width: 250px;">
+        </figure>
+        <div class="feature-body">
+          <div class="feature-kicker">FEATURE / 04</div>
+          <h3>製品セレクターにはなかった絞り込みパネル</h3>
+          <p>チップセットの複数選択、必要画角のスライダー、CamStreamer 対応機種に絞り込む ACAP ドロップダウン、シリーズの安い順ソート — すべてページにその場で適用されます。上部には固定したカテゴリーとツールがワンクリックで並びます。</p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <figure class="feature-figure feature-figure-inset">
+          <img src="img/v5-click-to-copy.png" alt="A catalogue row for AXIS Q1728-LE — 48 mm with the part number 03211-001 underlined, and a tooltip reading &quot;Click to copy 03211-001&quot;" style="width: 74%; max-width: 300px;">
+        </figure>
+        <div class="feature-body">
+          <div class="feature-kicker">FEATURE / 05</div>
+          <h3>クリックした項目を、そのままコピー</h3>
+          <p>型番は見積書へ、モデル名はメールへ、カテゴリーは仕様書へ — 必要な項目をクリックするだけでクリップボードに入り、チェックマークで確認できます。複数個パックの SKU は <code>(10 pcs)</code> の接尾辞を除いてコピーされるため、貼り付けた番号がそのまま発注に使えます。</p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <figure class="feature-figure feature-figure-inset">
+          <img class="lang-flags" src="img/v5-languages.png" alt="The popup&rsquo;s language row: twelve flags — English, Czech, Japanese, Spanish, German, French, Korean, Chinese, Swedish, Ukrainian, Arabic and Dutch — with English currently selected" style="width: 78%; max-width: 274px;">
+        </figure>
+        <div class="feature-body">
+          <div class="feature-kicker">FEATURE / 06</div>
+          <h3>あなたの言語で使えます</h3>
+          <div class="lang-hello" id="lang-hello" hidden>
+            <p class="hello-line" id="lang-hello-line"></p>
+            <a class="btn btn-primary" id="lang-hello-cta" href="https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener"></a>
+          </div>
+          <p>ポップアップ、パネル、スキャナーのすべての文言が<strong>12 言語</strong>に翻訳されています — 英語、チェコ語、日本語、スペイン語、ドイツ語、フランス語、韓国語、中国語、スウェーデン語、ウクライナ語、アラビア語、オランダ語。初回はブラウザーの設定から自動で選ばれ、国旗の列でいつでも切り替えられます。</p>
+        </div>
+      </div>
+
+      <div class="feature-card card-wide">
+        <figure class="feature-figure feature-figure-inset">
+          <img src="img/v5-scanner-crop.png" alt="スキャン中の IP Utility スキャナー: サブネットは 192.168.1、Stop ボタン、「Scanning… 166/254 (3 found)」のステータス行、そして検出された 2 台のカメラ — 192.168.1.156 の Q1656 ボックスカメラ（ARTPEC-8）と 192.168.1.185 の M1137 ネットワークカメラ（ARTPEC-6/7）— がシリアル番号とファームウェアバージョンとともに表示されている" style="width: 88%; max-width: 380px;">
+        </figure>
+        <div class="feature-body">
+          <div class="feature-kicker">FEATURE / 07</div>
+          <h3>Mac と Linux にも、ついに IP Utility を</h3>
+          <p>Axis が提供してきたのは <strong>Windows 版の AXIS IP Utility</strong> だけでした。Mac や Linux のインテグレーターは、Windows 機を借りるか、仮想マシンを立てるか、アドレスを当てずっぽうで試すしかありませんでした。</p>
+          <p>これは同じ作業をブラウザーで行うツールです。<strong>Chrome または Firefox が動く環境ならどこでも</strong> — macOS、Windows、Linux、ChromeOS で動作します。サブネットを入力して Scan を押せば、応答した機器が順に表示されます。モデル、IP、シリアル、ファームウェア、チップセットを VAPIX 経由でカメラから直接取得し、インストールも不要、データが端末の外に出ることもありません。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="fovmap" id="fovmap">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="eyebrow">02 — 撮影範囲</span></div>
+    <h2 class="section-title">範囲を描けば、<br>カメラが決まる。</h2>
+    <p class="section-sub">カメラを設置する場所にピンを置き、映したい範囲まで扇形をドラッグすると、下のリストが実際にカバーできるモデルに変わります。並び順は「広い順」ではなく「無駄なく収まる順」です。</p>
+    <figure class="fovmap-shot narrow-shot" style="max-width: 418px;">
+      <img src="img/v5-popup-fovmap.png" alt="4XS Toolbox ポップアップの FoV マップタブ: ワシントン DC の地図上にカメラのピンから黄色い扇形の撮影範囲と 2 つのドラッグハンドルが描かれ、下には「該当モデル」リスト（164 件が 89° 以上に該当）がAXIS M1135 Mk II、M1135-E Mk II、Q1808-LE、Q1809-LE、P1265 Mk II の型番・チップセットバッジ・価格バッジとともに並び、先頭の 1 件にハートが付いている">
+    </figure>
+    <ul class="spec-list" style="margin-top:28px; max-width:760px;">
+      <li><strong>PTZ の旋回も、正直に評価。</strong> 旋回してはじめて必要な角度に届く PTZ は、扇形をそのままカバーできる機種より下に並びます。PTZ が一度に見られるのは 1 方向だけだからです。</li>
+      <li><strong>無駄のない順に。</strong> 360° のパノラマカメラは理屈のうえでは 90° の扇形をカバーしますが、それが正解であることは稀です。結果は過剰スペックの少ない順に並び、同順位は価格で決まります。</li>
+      <li><strong>カメラのみ。</strong> クリップ、ライセンス、レコーダー、インターコムには画角がないため表示されません。安い順に並べ替えてもリストはカメラのままです。</li>
+      <li><strong>条件はひとつ。</strong> 描いた扇形と「必要な FoV」スライダーは同じ値で、ポップアップ、マップ、製品セレクターのパネルで共有されます。</li>
+    </ul>
+  </div>
+</section>
+
+<section class="features" id="network">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="eyebrow">03 — ネットワーク</span></div>
+    <h2 class="section-title">現場にすでにある<br>Axis 機器</h2>
+    <div class="tool-row">
+      <figure class="narrow-shot">
+        <img src="img/v5-scanner-live.png" alt="The IP Utility Scanner tab: a subnet field showing 192.168.1 with Re-Scan and CSV buttons and preset chips, a &quot;5 found · scanned 1 min ago&quot; line, and cards for Q1656-LE, M3086-V and P3265-LVE showing each device's IP address, serial number, firmware version and chipset badge">
+      </figure>
+      <div class="tool-copy">
+        <h3>IP Utility スキャナー</h3>
+        <p>サブネットを入力して Scan を押すと、応答したすべての Axis 機器が — <strong>モデル、IP、シリアル、ファームウェア、チップセット</strong>とともに一覧表示され、引き渡し書類用に CSV で書き出せます。結果はスキャンの進行に合わせて順次表示されるため、254 アドレスすべてを待たずに最初のカメラを確認できます。</p>
+        <ul class="spec-list">
+          <li>各アドレスに VAPIX の <code>basicdeviceinfo</code> で公開デバイス情報を問い合わせます。AXIS OS 10 以降では<strong>パスワード不要</strong>です。</li>
+          <li>権限は<strong>入力したサブネットのみ</strong>に対して、スキャンする時点で要求されます。インストール時には何も付与されません。</li>
+          <li><strong>データは PC の外に出ません。</strong> サーバーもテレメトリーもありません。結果はローカルストレージに保存され、ポップアップを開き直せば前回のスキャン結果がすぐ表示されます。</li>
+          <li><code>192.168.0</code>、<code>192.168.1</code>、<code>10.0.0</code>、および工場出荷時の <code>.90</code> アドレスのプリセット付き。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sorting" id="theme">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="eyebrow">04 — なじむ</span></div>
+    <h2 class="section-title">ライトでもダークでも、<br>12 言語で</h2>
+    <p class="section-sub">ポップアップは OS の設定ではなく、あなたの選択に従います — ヘッダーのワンクリックで切り替え。すべての文言が 12 言語に翻訳され、価格は EUR／USD／GBP／JPY で表示、顧客と画面を共有するときは完全に非表示にもできます。</p>
+    <div class="shot-pair" style="max-width: 760px;">
+      <figure>
+        <img src="img/v5-popup-catalogue-light.png" alt="The 4XS Toolbox popup in light theme, showing the quick links, pinned categories, tabs and catalogue rows with price and chipset badges">
+        <figcaption>ライト</figcaption>
+      </figure>
+      <figure>
+        <img src="img/v5-popup-catalogue-dark.png" alt="The same popup in dark theme, with the yellow accent and badges carried through on a near-black background">
+        <figcaption>ダーク</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="install" id="install">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="eyebrow">05 — インストール</span></div>
+    <h2 class="section-title">ワンクリック、<br>デベロッパーモード不要</h2>
+    <div class="install-grid">
+      <ol class="steps">
+        <li><span class="step-num">1</span><span class="step-text">Chrome ウェブストアの <strong>4XS Toolbox</strong> のページを開きます。</span></li>
+        <li><span class="step-num">2</span><span class="step-text"><strong>Chrome に追加</strong>をクリックし、<strong>拡張機能を追加</strong>で確定します。インストールはこれだけです。</span></li>
+        <li><span class="step-num">3</span><span class="step-text">製品セレクターを開くと、バッジ・絞り込みパネル・画角スライダーが自動的に表示されます。すでに開いているタブにも少し待てば反映され、再読み込みは不要です。</span></li>
+        <li><span class="step-num">4</span><span class="step-text">ツールバーのアイコンをクリックすると、カタログ検索、マップでの撮影範囲の描画、ネットワーク上の Axis 機器のスキャンが行えます。</span></li>
+        <li><span class="step-num">5</span><span class="step-text"><a href="https://www.axis.com/products" target="_blank" rel="noopener">axis.com/products</a> で普段扱うカテゴリーにハートを付けると、ポップアップのボタンになります。</span></li>
+      </ol>
+      <div>
+        <!-- .install-cta is a block card: mark, meta, then the button, stacked
+             and centred. It must NOT be the <a> itself - an inline anchor
+             collapses the children on top of each other. -->
+        <div class="install-cta">
+          <div class="install-cta-mark">4XS</div>
+          <div class="install-cta-meta">
+            <div class="install-cta-name">4XS Toolbox</div>
+            Chrome ウェブストア · 無料
+          </div>
+          <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener">Chrome に追加</a>
+        </div>
+        <p class="install-cta-note" style="margin-top:16px">また <a href="https://addons.mozilla.org/en-US/firefox/addon/axis-msrp-price-overlay/" target="_blank" rel="noopener" style="font-weight:600">addons.mozilla.org</a> では Firefox 版も配布しています。自分でビルドしたい場合、ソースコードはすべて <a href="https://github.com/kotyzap/4XS-Toolbox" target="_blank" rel="noopener" style="font-weight:600">GitHub</a> にあります。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="updates" id="updates">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="eyebrow">06 — 価格</span></div>
+    <h2 class="section-title">あなたの価格表を、<br>そのまま</h2>
+    <div class="tool-row flip">
+      <div class="tool-copy">
+        <h3>毎月の .xls をドロップするだけ</h3>
+        <p>同梱のカタログは公開されている AXIS 価格表です。新しい価格表が届いたら、設定ページに <code>.xls</code> をドロップするだけで、すべてのバッジ・ポップアップの行・マップの結果があなたの数字に置き換わります — <strong>再インストールも、リリース待ちも不要</strong>です。</p>
+        <ul class="spec-list">
+          <li>標準の AXIS 価格表は自動認識されます — <strong>All products</strong> シートを読み取り、全カテゴリーを網羅します。</li>
+          <li>それ以外の表計算ファイルも手動で列を対応付けできます。価格列の通貨も指定可能です。</li>
+          <li>為替レートの取得以外、どこにもアップロードされません。<strong>同梱の価格に戻す</strong>でワンクリックで元に戻せます。</li>
+        </ul>
+      </div>
+      <figure>
+        <img src="img/v5-price-update.png" alt="The settings page&rsquo;s Update prices card: a dashed drop zone reading &quot;Drop a price list (.xls/.xlsx) here, or click to choose a file&quot;, a source label field, and Apply update and Revert to bundled prices buttons">
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="sources" id="sources">
+  <div class="wrap">
+    <div class="eyebrow-row"><span class="eyebrow">07 — データの出どころ</span></div>
+    <h2 class="section-title">魔法もなければ、<br>あなたを追跡もしない</h2>
+    <div class="sources-grid">
+      <div class="source-card">
+        <div class="source-tag light">価格</div>
+        <p><code>catalog-data.js</code> は公開されている <strong>AXIS 価格表</strong>から抽出した SKU ごとのデータを保持します。定価として定義されているのは EUR のみで、USD・GBP・JPY はそこから為替換算した概算です。概算であることが分かるよう先頭に <code>~</code> が付きます。</p>
+      </div>
+      <div class="source-card">
+        <div class="source-tag dark">チップセット</div>
+        <p><code>chipset-data.js</code> は <a href="https://camstreamer.com/download-app-all-supported-cameras" target="_blank" rel="noopener" style="font-weight:600">CamStreamer の対応ハードウェア一覧</a>から解析したスナップショットを同梱しています。バックグラウンドのサービスワーカーが毎週更新するほか、ポップアップから手動更新もできます。</p>
+      </div>
+      <div class="source-card">
+        <div class="source-tag light">画角</div>
+        <p><code>fov-data.js</code> は各モデルの水平画角の最小値と最大値を保持します。PTZ の全旋回範囲をカバー範囲として扱うのは、それが妥当な場合のみです。画角データのないモデルは一致とみなされません。</p>
+      </div>
+      <div class="source-card">
+        <div class="source-tag dark">ネットワーク</div>
+        <p>スキャン結果は VAPIX 経由でカメラから直接読み取り、ローカルストレージに保存されます。<strong>どこにも送信されません</strong> — この拡張機能にサーバーはなく、アカウントも解析もありません。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <div class="footer-brand-row">
+        <span class="footer-mark">4XS</span>
+        <span class="name">4XS Toolbox v5.0</span>
+      </div>
+      <p>制作: Pavel Kotyza · <a href="https://4xs.dev" target="_blank" rel="noopener" style="font-weight:600">4xs.dev</a>。個人プロジェクトであり、Axis Communications AB とは提携・承認・後援のいずれの関係もありません。AXIS&reg; は Axis Communications AB の商標です。価格は MSRP（定価）であり実売価格ではありません。USD・GBP・JPY は為替換算による概算で、Axis が独自に公開した価格表ではありません。</p>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/kotyzap/4XS-Toolbox" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/kotyzap/4XS-Toolbox/releases" target="_blank" rel="noopener">リリース</a>
+      <a href="https://ko-fi.com/K3K6RR4LY" target="_blank" rel="noopener">コーヒーを一杯</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var KEY = "axis-overlay-docs-theme";
+    var root = document.documentElement;
+    var btn = document.getElementById("theme-toggle");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem(KEY, next); } catch (e) {}
+    });
+  })();
+</script>
+
+<script>
+  // "I speak <your language>" — matched against the same twelve languages the
+  // extension itself ships. Purely additive: the block stays hidden unless a
+  // locale matches, so a visitor on an unlisted locale just sees the English
+  // copy below it rather than an empty box.
+  (function () {
+    var L = {
+      en: ["I speak English.", "Install it free", "ltr"],
+      cs: ["Mluv\u00edm \u010desky.", "Nainstalovat zdarma", "ltr"],
+      ja: ["\u65e5\u672c\u8a9e\u306b\u5bfe\u5fdc\u3057\u3066\u3044\u307e\u3059\u3002", "\u7121\u6599\u3067\u30a4\u30f3\u30b9\u30c8\u30fc\u30eb", "ltr"],
+      es: ["Hablo espa\u00f1ol.", "Inst\u00e1lalo gratis", "ltr"],
+      de: ["Ich spreche Deutsch.", "Kostenlos installieren", "ltr"],
+      fr: ["Je parle fran\u00e7ais.", "Installer gratuitement", "ltr"],
+      ko: ["\ud55c\uad6d\uc5b4\ub97c \uc9c0\uc6d0\ud569\ub2c8\ub2e4.", "\ubb34\ub8cc\ub85c \uc124\uce58\ud558\uae30", "ltr"],
+      zh: ["\u6211\u4f1a\u8bf4\u4e2d\u6587\u3002", "\u514d\u8d39\u5b89\u88c5", "ltr"],
+      sv: ["Jag talar svenska.", "Installera gratis", "ltr"],
+      uk: ["\u042f \u0440\u043e\u0437\u043c\u043e\u0432\u043b\u044f\u044e \u0443\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u043e\u044e.", "\u0412\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0438 \u0431\u0435\u0437\u043a\u043e\u0448\u0442\u043e\u0432\u043d\u043e", "ltr"],
+      ar: ["\u0623\u062a\u062d\u062f\u062b \u0627\u0644\u0639\u0631\u0628\u064a\u0629.", "\u062b\u0628\u0651\u062a\u0647 \u0645\u062c\u0627\u0646\u064b\u0627", "rtl"],
+      nl: ["Ik spreek Nederlands.", "Gratis installeren", "ltr"]
+    };
+    var box = document.getElementById("lang-hello");
+    if (!box) return;
+    var nav = (navigator.language || navigator.userLanguage || "").toLowerCase();
+    var hit = L[nav.split("-")[0]];
+    if (!hit) return;
+    document.getElementById("lang-hello-line").textContent = hit[0];
+    document.getElementById("lang-hello-cta").textContent = hit[1];
+    box.setAttribute("dir", hit[2]);
+    box.hidden = false;
+  })();
+</script>
+
+<script>
+  // Hero in the visitor's own language, when it is one of the twelve the
+  // extension itself speaks. English is the default and is what the markup
+  // already says, so an unknown locale changes nothing at all - and because
+  // the strings below are constants in this file, building the sentence with
+  // innerHTML keeps the two inline links working in every language.
+  (function () {
+    var T = {"en": ["Find the right", "Axis camera.", "Chipset, list price and field of view next to every Axis camera — on the {ps}, in {search} and on every product page. Plus a map that picks cameras from the coverage you draw, and a scanner for the devices already on your network.", "Add to Chrome — it’s free", "Get the source", "Axis Product Selector", "axis.com search", "ltr"], "cs": ["Najděte správnou", "kameru Axis.", "Čipset, ceníková cena a zorné pole u každé kamery Axis — v {ps}, ve {search} i na každé stránce produktu. K tomu mapa, která vybere kamery podle pokrytí, jež nakreslíte, a skener zařízení, která už máte v síti.", "Přidat do Chromu — zdarma", "Zdrojový kód", "Axis Product Selectoru", "vyhledávání na axis.com", "ltr"], "ja": ["最適な", "Axis カメラを。", "チップセット、定価、画角を Axis の各カメラの隣に — {ps}、{search}、すべての製品ページで。描いた撮影範囲からカメラを選ぶマップと、ネットワーク上にすでにある機器を探すスキャナーも。", "Chrome に追加 — 無料", "ソースコード", "Axis 製品セレクター", "axis.com 検索", "ltr"], "es": ["Encuentra la cámara", "Axis adecuada.", "Chipset, precio de lista y campo de visión junto a cada cámara Axis — en el {ps}, en {search} y en cada página de producto. Además, un mapa que elige cámaras según la cobertura que dibujes y un escáner de los equipos que ya tienes en la red.", "Añadir a Chrome — gratis", "Ver el código", "Axis Product Selector", "la búsqueda de axis.com", "ltr"], "de": ["Finden Sie die", "richtige Axis-Kamera.", "Chipsatz, Listenpreis und Blickfeld neben jeder Axis-Kamera — im {ps}, in der {search} und auf jeder Produktseite. Dazu eine Karte, die Kameras nach der von Ihnen gezeichneten Abdeckung auswählt, und ein Scanner für die Geräte, die bereits im Netz sind.", "Zu Chrome hinzufügen — kostenlos", "Zum Quellcode", "Axis Product Selector", "axis.com-Suche", "ltr"], "fr": ["Trouvez la bonne", "caméra Axis.", "Chipset, prix catalogue et champ de vision à côté de chaque caméra Axis — dans le {ps}, dans {search} et sur chaque page produit. Plus une carte qui choisit les caméras selon la couverture que vous dessinez, et un scanner des équipements déjà présents sur votre réseau.", "Ajouter à Chrome — gratuit", "Voir le code source", "Axis Product Selector", "la recherche axis.com", "ltr"], "ko": ["알맞은", "Axis 카메라를.", "칩셋, 정가, 화각을 모든 Axis 카메라 옆에 — {ps}, {search}, 모든 제품 페이지에서. 직접 그린 촬영 범위로 카메라를 골라 주는 지도와, 네트워크에 이미 있는 장비를 찾아 주는 스캐너까지.", "Chrome에 추가 — 무료", "소스 코드", "Axis 제품 셀렉터", "axis.com 검색", "ltr"], "zh": ["找到合适的", "Axis 摄像机。", "在每台 Axis 摄像机旁显示芯片组、标价和视场角 — 涵盖 {ps}、{search} 以及每个产品页面。还有根据你绘制的覆盖范围挑选摄像机的地图，以及扫描网络中现有设备的工具。", "添加到 Chrome — 免费", "查看源代码", "Axis 产品选型器", "axis.com 搜索", "ltr"], "sv": ["Hitta rätt", "Axis-kamera.", "Chipset, listpris och synfält bredvid varje Axis-kamera — i {ps}, i {search} och på varje produktsida. Dessutom en karta som väljer kameror utifrån täckningen du ritar, och en skanner för enheterna som redan finns i nätverket.", "Lägg till i Chrome — gratis", "Källkoden", "Axis Product Selector", "axis.com-sökningen", "ltr"], "uk": ["Знайдіть потрібну", "камеру Axis.", "Чипсет, прайсова ціна та кут огляду поруч із кожною камерою Axis — у {ps}, у {search} та на кожній сторінці продукту. А також мапа, що добирає камери за намальованим покриттям, і сканер пристроїв, які вже є у вашій мережі.", "Додати в Chrome — безкоштовно", "Вихідний код", "Axis Product Selector", "пошуку axis.com", "ltr"], "ar": ["اعثر على", "كاميرا Axis المناسبة.", "الشريحة وسعر القائمة ومجال الرؤية بجوار كل كاميرا Axis — في {ps} و{search} وكل صفحة منتج. بالإضافة إلى خريطة تختار الكاميرات حسب التغطية التي ترسمها، وماسح للأجهزة الموجودة بالفعل على شبكتك.", "أضِفه إلى Chrome — مجانًا", "الشيفرة المصدرية", "أداة اختيار منتجات Axis", "بحث axis.com", "rtl"], "nl": ["Vind de juiste", "Axis-camera.", "Chipset, adviesprijs en beeldhoek naast elke Axis-camera — in de {ps}, in {search} en op elke productpagina. Plus een kaart die camera's kiest op basis van de dekking die je tekent, en een scanner voor de apparaten die al in je netwerk zitten.", "Toevoegen aan Chrome — gratis", "Broncode", "Axis Product Selector", "axis.com-zoekfunctie", "ltr"]};
+    var nav = (navigator.language || navigator.userLanguage || "").toLowerCase();
+    var code = nav.split("-")[0];
+    var t = T[code];
+    if (!t || code === "en") return;
+    var esc = function (x) { return String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;"); };
+    var link = function (href, label) {
+      return '<a href="' + href + '" target="_blank" rel="noopener">' + esc(label) + "</a>";
+    };
+    var set = function (id, text) { var el = document.getElementById(id); if (el) el.textContent = text; };
+    set("hero-h1a", t[0]);
+    set("hero-h1b", t[1]);
+    set("hero-cta1", t[3]);
+    set("hero-cta2", t[4]);
+    var sub = document.getElementById("hero-sub");
+    if (sub) {
+      sub.innerHTML = esc(t[2])
+        .replace("{ps}", link("https://www.axis.com/support/tools/product-selector", t[5]))
+        .replace("{search}", link("https://www.axis.com/search", t[6]));
+      if (t[7] === "rtl") { sub.setAttribute("dir", "rtl"); }
+    }
+    if (t[7] === "rtl") {
+      var h1 = document.querySelector(".hero h1");
+      if (h1) h1.setAttribute("dir", "rtl");
+    }
+    var S = {"cs": ["Modely", "SKU s cenou", "Jazyky", "Aktuální build"], "ja": ["モデル", "価格付き SKU", "対応言語", "現在のビルド"], "es": ["Modelos", "SKU con precio", "Idiomas", "Versión actual"], "de": ["Modelle", "SKUs mit Preis", "Sprachen", "Aktueller Build"], "fr": ["Modèles", "SKU tarifés", "Langues", "Version actuelle"], "ko": ["모델", "가격 있는 SKU", "언어", "현재 빌드"], "zh": ["型号", "含价格 SKU", "语言", "当前版本"], "sv": ["Modeller", "SKU med pris", "Språk", "Aktuell version"], "uk": ["Моделі", "SKU з цінами", "Мови", "Поточна збірка"], "ar": ["الطرازات", "‏SKU بأسعار", "اللغات", "الإصدار الحالي"], "nl": ["Modellen", "SKU's met prijs", "Talen", "Huidige build"]};
+    var lab = S[code];
+    if (lab) {
+      var cells = document.querySelectorAll(".stat-strip .stat-label");
+      for (var i = 0; i < cells.length && i < lab.length; i++) cells[i].textContent = lab[i];
+    }
+  })();
+</script>
+
+</body>
+</html>

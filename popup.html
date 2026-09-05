@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>4XS Toolbox</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b6b6b;
+    --border: #e4e4e4;
+    --row-hover: #f7f7f7;
+    /* Axis Yellow - the same brand color used for price/chipset badges on
+       the Product Selector and search results, so the popup reads as part
+       of the same family instead of its own separate red-accented UI. */
+    --accent: #ffcc33;
+    --accent-strong: #e0b400;
+    --accent-ink: #1a1a1a;
+    --header-bg: #1a1a1a;
+    --header-text: #ffffff;
+    --header-muted: #b8b8b8;
+    /* Kept separate from --accent so real failures still read as errors
+       rather than blending into the brand yellow. */
+    --error: #c8102e;
+  }
+  [data-theme="dark"] {
+    --bg: #1c1c1c;
+    --text: #f0f0f0;
+    --muted: #a0a0a0;
+    --border: #333333;
+    --row-hover: #2a2a2a;
+    --header-bg: #0f0f0f;
+    --error: #ff5c72;
+  }
+  * { box-sizing: border-box; }
+  body {
+    /* Fixed width, fixed-height view area below (see .view-area) - the
+       popup's own window dimensions never change after this, which is
+       what actually avoids Chrome's extension-popup shrink bug (it grows
+       to fit content reliably but never re-measures itself smaller
+       afterward). Catalogue / FOV Map / Find Camera are switched as
+       single-column views (see .view-tabs / .view-area) instead of side
+       columns that used to widen the whole popup. */
+    width: 420px;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 12px 14px;
+    background: var(--header-bg);
+    color: var(--header-text);
+    border-bottom: 3px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 {
+    font-size: 14px;
+    margin: 0;
+    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  header .version {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--header-muted);
+  }
+  header .sub {
+    font-size: 11px;
+    color: var(--header-muted);
+    margin-top: 2px;
+  }
+  #themeToggle, #advancedBtn, #kofiBtn {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+    color: var(--header-text);
+    border-radius: 6px;
+    /* Icon-only now (used to be a single emoji character, sized with
+       text padding) - equal padding centers the 18px icon in a small
+       square button instead of the emoji's old wide/short pill. */
+    padding: 5px;
+    line-height: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  #themeToggle svg, #advancedBtn svg, #kofiBtn svg { display: block; }
+  .header-actions {
+    display: flex;
+    gap: 6px;
+  }
+  /* Search is the main control of this view, so it sits on the same
+     tinted-yellow panel as the three tab buttons, with the plain input
+     inside it - otherwise a bare 1px-bordered field reads as background. */
+  .search-wrap {
+    margin: 0 14px 10px;
+    padding: 8px;
+    background: rgba(255, 204, 51, 0.2);
+    border: 1px solid var(--accent-strong);
+    border-radius: 6px;
+    /* Row so #filterBtnCatalog can sit beside the input without costing the
+       popup any extra height - there are only ~25px left under Chrome's
+       600px popup cap (see popup_fov_results.md). */
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+  #search {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 13px;
+    border: 1px solid var(--accent-strong);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  #search:focus {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 0;
+  }
+  #results {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 6px 8px;
+  }
+  .row {
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    /* Not a click target as a whole any more: the text fields copy their own
+       value and the heart alone toggles the favorite. */
+    cursor: default;
+  }
+  /* Click-to-copy fields, same affordance as find-cams' .fc-copy. */
+  .row .copy { cursor: copy; }
+  .row .copy:hover { text-decoration: underline dotted; color: var(--text); }
+  .row .copied::after { content: " ✓"; color: var(--accent-strong); font-weight: 700; }
+  .row:hover { background: var(--row-hover); }
+  .row.favorited { background: rgba(255, 145, 0, 0.08); }
+  /* Thin divider between rows so a tightly-packed list still reads as
+     separate entries. Sibling selector (not border-bottom on .row itself)
+     so there's no stray line above the first row or below the last. */
+  .row + .row { border-top: 1px solid var(--border); }
+  .row .fav {
+    float: right;
+    display: inline-block;
+    /* 3px margin + 3px padding keeps the old 6px gap while giving the heart -
+       now the only favorite target - a bigger hit area than its 13px glyph. */
+    margin-left: 3px;
+    padding: 2px 3px;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    /* Fixed content width, centered: "♡" and "🧡" aren't the same glyph
+       width (measured 12px vs 16px at this font), so without this a
+       favorited row's price/chipset shifted ~4px left of every other row -
+       the same column-alignment problem as .price/.chipset below, just
+       triggered by favoriting instead of by digit count. */
+    width: 16px;
+    text-align: center;
+  }
+  .row .model { font-weight: 600; }
+  .row .meta { color: var(--muted); font-size: 11px; }
+  .row .price {
+    float: right;
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 3px;
+    /* Matches .axis-product-price-badge's font-size on the live AXIS
+       Product Selector pages (products-content.css), so the popup's price
+       badges read the same size as the ones on axis.com itself. */
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-ink);
+    background: rgba(255, 204, 51, 0.85);
+    /* Fixed-ish width (not a hard cap - min-width, so a rare long fallback
+       like "no EUR data" still fits) so every row reserves the same space
+       here regardless of digit count. Measured against the catalog's real
+       spread (headless): EUR is the widest currency at up to 77px
+       ("€44,999.00"); 78px covers it with no clipping in USD/GBP/JPY either. */
+    min-width: 78px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .row .chipset {
+    float: right;
+    display: inline-block;
+    margin-right: 6px;
+    padding: 1px 8px;
+    border-radius: 3px;
+    /* Matches .axis-product-chipset-badge's font-size on the live AXIS
+       Product Selector pages (products-content.css). */
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+    background: rgba(26, 26, 26, 0.85);
+    white-space: nowrap;
+    /* Fixed-ish width, left-aligned text: this is what actually lines up
+       every chipset pill in the same column, since .price is now also a
+       fixed width immediately to its right - two variable-width floats in a
+       row can never share a stable left edge, only two fixed ones can.
+       Measured against all 12 known chipsets (headless, incl. the ARTPEC
+       CamStreamer-supported checkmark): 100px covers "Ambarella CV25/CV75"
+       (84px of text) and "ARTPEC-6/7 ✅" (82px) with no clipping. */
+    min-width: 100px;
+    text-align: left;
+  }
+  footer {
+    padding: 8px 14px 12px;
+    font-size: 10.5px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+  .empty { padding: 12px 14px; font-size: 12px; color: var(--muted); }
+
+  .chipset-section {
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .chipset-section .row-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .chipset-section .label {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .chipset-section .status {
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .chipset-section .status.error {
+    color: var(--error);
+  }
+  #refreshChipsets {
+    border: 1px solid var(--accent-strong);
+    background: rgba(255, 204, 51, 0.2);
+    color: var(--accent-ink);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #refreshChipsets:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  #refreshChipsets:hover:not(:disabled) {
+    background: var(--accent);
+  }
+
+  .currency-section {
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .currency-section .label {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .currency-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .currency-toggle button {
+    border: none;
+    background: transparent;
+    color: var(--text);
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .currency-toggle button + button {
+    border-left: 1px solid var(--border);
+  }
+  .currency-toggle button.active {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  /* Catalogue / FOV Map / Find Camera are switched here as single-column views
+     inside one fixed-size popup (see .view-area below), instead of side
+     columns that used to widen the whole popup window. Chrome's
+     extension-popup auto-resize grows reliably to fit new content but has
+     a longstanding, verified-unfixable-from-here bug where it never
+     re-measures itself smaller afterward - so the fix is to never ask the
+     popup to change size in the first place. The small 🗺 header icon is
+     separate - it always opens the full-page fov-map.html tool, it
+     doesn't switch views. */
+  .view-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 10px 14px 0;
+  }
+  /* Quick links to axis.com, above the tab bar. Same tinted-panel look as
+     the tabs but single-line and about half their height. */
+  .link-row {
+    display: flex;
+    gap: 8px;
+    margin: 10px 14px 0;
+  }
+  .link-row a {
+    flex: 1 1 0;
+    min-width: 0;
+    /* Flex so the icon can sit beside the label; the label carries the
+       ellipsis, since text-overflow does nothing on a flex container. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid var(--accent-strong);
+    background: rgba(255, 204, 51, 0.2);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 5px 5px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .link-row a svg,
+  .cat-row a svg { flex: 0 0 auto; }
+  .link-row a span,
+  .cat-row a span { overflow: hidden; text-overflow: ellipsis; }
+  .link-row a:hover {
+    background: rgba(255, 204, 51, 0.35);
+  }
+  /* ---- Category quick links -----------------------------------------
+     One row of up to 4 buttons, one per category hearted on
+     axis.com/products. The row only exists when at least one is hearted,
+     and it costs 28px there is no headroom for - so the list area pays
+     for it via .axis-has-categories below. Capped at 4 (one line) so the
+     popup only ever has two possible heights. */
+  .cat-row {
+    display: flex;
+    gap: 8px;
+    margin: 8px 14px 0;
+  }
+  .cat-row[hidden] { display: none; }
+  .cat-row a {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 1px solid var(--accent-strong);
+    background: rgba(255, 204, 51, 0.1);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 4px 5px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .cat-row a:hover { background: rgba(255, 204, 51, 0.3); }
+  /* 394 - 30 = 364, so the popup body stays at exactly 575px whether the
+     row is there or not. Measured, not guessed. */
+  body.axis-has-categories .view-area {
+    height: 364px;
+  }
+  .view-area {
+    /* 430px before the .link-row was added above the tabs; trimmed by the
+       row's height so the popup stays under Chrome's 600px popup cap.
+       Body height with this: 575px. */
+    height: 394px;
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .view {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+  .view.active {
+    display: flex;
+  }
+  #fovMapCanvas {
+    width: 100%;
+    flex: 1 1 auto;
+    /* The results list below has a fixed height, so the map takes whatever
+       is left - but never less than this, or a wide cone becomes undrawable. */
+    min-height: 150px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin: 10px 10px 0;
+  }
+  .fovmap-popup-hint-row {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 6px 10px 10px;
+  }
+  .fovmap-popup-step-text {
+    flex: 1 1 auto;
+    font-size: 10.5px;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.3;
+  }
+  .fovmap-results-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fovmap-results-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 10px 4px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .fovmap-results-count {
+    font-weight: 400;
+    color: var(--muted);
+  }
+  /* ---- Shared chipset filter / sort menu -----------------------------
+     One button per list (search row + FoV results header), both opening
+     the SAME #filterPop panel and writing the same state - filtering in
+     one tab is meant to be visible in the other.
+
+     The panel is position:fixed on purpose: every ancestor it would
+     otherwise sit in (.view, .view-area) is overflow:hidden, which would
+     clip a ~230px popover down to nothing. Fixed coordinates are computed
+     from the button's rect in popup.js. */
+  .filter-btn {
+    flex: 0 0 auto;
+    border: 1px solid var(--accent-strong);
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 0 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .filter-btn:hover { background: var(--row-hover); }
+  .filter-btn.active { background: var(--accent); border-color: var(--text); }
+  /* The FoV results header version is a plain inline button in a text row,
+     not a full-height field neighbour like the one in the search panel. */
+  .fovmap-results-head .filter-btn {
+    padding: 2px 7px;
+    font-size: 11px;
+    background: rgba(255, 204, 51, 0.2);
+  }
+  .fovmap-results-head .filter-btn:hover { background: rgba(255, 204, 51, 0.35); }
+  .fovmap-results-head .filter-btn.active { background: var(--accent); }
+  .filter-btn .filter-count {
+    background: var(--header-bg);
+    color: var(--accent);
+    border-radius: 8px;
+    padding: 0 4px;
+    font-size: 9.5px;
+    line-height: 14px;
+  }
+  .filter-pop {
+    position: fixed;
+    /* Above the map. This was set when the map was Leaflet, whose panes and
+       controls climb to 1000 in the root stacking context and drew straight
+       over this panel at z-index 50. MapLibre's own chrome sits far lower,
+       but the generous value costs nothing and keeps the popover safe. */
+    z-index: 10000;
+    width: 214px;
+    background: var(--bg);
+    border: 1px solid var(--accent-strong);
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+    padding: 8px;
+    font-size: 12px;
+  }
+  .filter-pop[hidden] { display: none; }
+  .filter-pop .filter-sec {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--muted);
+    margin: 2px 0 5px;
+  }
+  .filter-pop label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 2px;
+    cursor: pointer;
+  }
+  .filter-pop label:hover { background: var(--row-hover); border-radius: 4px; }
+  .filter-pop input { margin: 0; flex: 0 0 auto; }
+  .filter-pop hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 8px 0;
+  }
+  .filter-pop .filter-foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+  .filter-pop .filter-foot button {
+    background: none;
+    border: 0;
+    color: var(--muted);
+    font-size: 11px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+  }
+  .filter-pop .filter-foot button:hover { color: var(--text); }
+  #fovMapResults {
+    flex: 0 0 152px;
+    overflow-y: auto;
+    padding: 0 6px 6px;
+  }
+  /* One line per match: model on the left, chipset/price/heart badges
+     right-floated exactly like .row in the Chipset & MSRP list. */
+  #fovMapResults .row {
+    padding: 4px 8px;
+  }
+  #fovMapResults .row .model {
+    font-size: 11.5px;
+    /* One line per row: the model name truncates rather than wrapping under
+       the right-floated badges. */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  #fovMapResults .row .sku {
+    font-weight: 400;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+  #fovMapResetBtn, #fovMapBtn {
+    flex: 0 0 auto;
+    border: 1px solid var(--accent-strong);
+    background: rgba(255, 204, 51, 0.2);
+    color: var(--accent-ink);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #fovMapResetBtn:hover, #fovMapBtn:hover {
+    background: var(--accent);
+  }
+  #fovMapBtn.active {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent-strong);
+  }
+
+  /* Big yellow tab buttons (Chipset & MSRP / FoV Map / IP Utility), equal
+     width side by side above .view-area. Required angle slider lives
+     inside the Catalogue view below, not here - same split as content.js's Filters
+     panel, where the map itself carries no controls beyond click/drag, and
+     the angle requirement can also be set by drawing a cone on the map. */
+  .fovmap-toggle-btn {
+    width: calc(100% - 28px);
+    margin: 10px 14px 0;
+    border: 1px solid var(--accent-strong);
+    background: rgba(255, 204, 51, 0.2);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+  }
+  .findcams-popup-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 10px 0;
+    font-weight: 700;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  #findCamsPageBtn {
+    border: 1px solid var(--accent-strong);
+    background: rgba(255, 204, 51, 0.2);
+    color: var(--accent-ink);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  #findCamsPageBtn:hover { background: var(--accent); }
+  #findCamsMount {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .view-tabs .fovmap-toggle-btn {
+    flex: 1 1 0;
+    width: auto;
+    margin: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 7px 5px 6px;
+  }
+  .view-tabs .tab-icon {
+    display: block;
+    flex: 0 0 auto;
+  }
+  .view-tabs .tab-label {
+    /* Buttons don't inherit the page font by default (Chrome falls back
+       to system-ui), which is wider than the body's Arial and makes the
+       labels look different from the rest of the popup - so inherit it
+       explicitly. Every label is two deliberate lines ("Chipset &" /
+       "MSRP"): the translation strings carry a \n and pre-line renders
+       it, so the three tabs always have the same height and no line
+       ever has to fit the whole name in the ~114px a tab gets at 420px. */
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: pre-line;
+  }
+  .fovmap-toggle-btn:hover {
+    background: rgba(255, 204, 51, 0.35);
+  }
+  .fovmap-toggle-btn.active {
+    background: var(--accent);
+    border-color: var(--text);
+  }
+  .angle-row {
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .angle-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .angle-value-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  #angleValueInput {
+    width: 44px;
+    flex: 0 0 auto;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--text);
+    text-align: right;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 4px;
+    background: var(--bg);
+    -moz-appearance: textfield;
+  }
+  #angleValueInput::-webkit-outer-spin-button,
+  #angleValueInput::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  #angleSlider {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  /* CSS-only markers (no image files) for the same reason content.js uses
+     them on the Product Selector page: avoids fighting Leaflet's default
+     icon-path auto-detection inside a bundled script context. */
+  .axis-fovmap-edge-handle {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #e0b400; border: 2px solid #fff;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.6); cursor: grab;
+  }
+  .axis-fovmap-edge-handle:active { cursor: grabbing; }
+  .axis-fovmap-camera-icon {
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; line-height: 1; background: #1a1a1a; border: 2px solid #fff;
+    border-radius: 50%; box-shadow: 0 0 3px rgba(0, 0, 0, 0.6); cursor: grab;
+  }
+  .axis-fovmap-camera-icon:active { cursor: grabbing; }
+
+  /* Advanced/info drawer - Currency, FX rates, the chipset-data update row,
+     the monthly price-override link, and the footer disclaimer are useful
+     but noisy for a quick lookup, so they're all collapsed behind
+     #advancedBtn by default rather than always shown. Gated on body NOT
+     having .axis-advanced-visible (rather than an unconditional display:none
+     on these IDs) so that once the class is added, JS setting
+     style.display = "" actually falls back to each element's own default
+     display (block, or flex for .currency-section) instead of continuing to
+     match a `display:none` rule at equal specificity. */
+  body:not(.axis-advanced-visible) #fxSection,
+  body:not(.axis-advanced-visible) #chipsetSection,
+  body:not(.axis-advanced-visible) #footerSection,
+  body:not(.axis-advanced-visible) #currencySection,
+  body:not(.axis-advanced-visible) #monthlySection,
+  body:not(.axis-advanced-visible) #languageSection {
+    display: none;
+  }
+  .language-flags {
+    /* 12 flags as two even rows of six (a wrapping flexbox fell 7 + 5). */
+    display: grid;
+    grid-template-columns: repeat(6, max-content);
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .language-flags button {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 3px 7px;
+    font-size: 15px;
+    line-height: 1.2;
+    cursor: pointer;
+  }
+  .language-flags button.active {
+    border-color: var(--accent-strong);
+    background: rgba(255, 204, 51, 0.25);
+  }
+  #monthlySection #settingsBtn {
+    border: 1px solid var(--accent-strong);
+    background: rgba(255, 204, 51, 0.2);
+    color: var(--accent-ink);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #monthlySection #settingsBtn:hover {
+    background: var(--accent);
+  }
+  #advancedBtn.active {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent-strong);
+  }
+
+  /* Ko-fi header icon - styled to match its three siblings above (same
+     border/padding/font-size) so it reads as one more toolbar button
+     rather than an oversized emoji blob; the only thing that sets it
+     apart is an orange tint and a heartbeat pulse - two quick beats then
+     a rest, the way a real heart goes - so it's noticeable without being
+     a distracting strobe. Hover stops it and drops the tint, so the
+     button doesn't move under the cursor while you aim at it. */
+  #kofiBtn {
+    border-color: rgba(255, 138, 0, 0.75);
+    background: rgba(255, 138, 0, 0.18);
+    color: #ffb066;
+    animation: kofi-heartbeat 2.4s ease-in-out infinite;
+  }
+  #kofiBtn:hover {
+    animation-play-state: paused;
+    transform: none;
+    border-color: rgba(255, 138, 0, 0.95);
+    background: rgba(255, 138, 0, 0.45);
+    color: #fff;
+  }
+  @keyframes kofi-heartbeat {
+    0%   { transform: scale(1);    background: rgba(255, 138, 0, 0.18); }
+    8%   { transform: scale(1.16); background: rgba(255, 138, 0, 0.5); }
+    16%  { transform: scale(1);    background: rgba(255, 138, 0, 0.18); }
+    24%  { transform: scale(1.12); background: rgba(255, 138, 0, 0.42); }
+    34%, 100% { transform: scale(1); background: rgba(255, 138, 0, 0.18); }
+  }
+  /* Respect a system "reduce motion" preference - the orange tint alone
+     still makes the button stand out. */
+  @media (prefers-reduced-motion: reduce) {
+    #kofiBtn { animation: none; }
+  }
+
+/* Basemap unavailable (tile provider refused us) - a plain graticule so the
+   map area still reads as a map surface, plus a one-line note. The coverage
+   wedge, the pin and the handles are all drawn by us on top of this. */
+.maplibregl-map.axis-map-nobasemap {
+  background-color: #eef1f3;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.axis-map-nobasemap-note {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 500;
+  max-width: 92%;
+  padding: 5px 10px;
+  border: 1px solid #e0b400;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1a1a1a;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+
+html[data-theme="dark"] .maplibregl-map.axis-map-nobasemap {
+  background-color: #242424;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+}
+html[data-theme="dark"] .axis-map-nobasemap-note {
+  background: rgba(30, 30, 30, 0.94);
+  color: #f0f0f0;
+}
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>4XS Toolbox <span class="version" id="versionLabel"></span></h1>
+      <div class="sub" id="countLabel">loading…</div>
+    </div>
+    <div class="header-actions">
+      <button id="advancedBtn" title="Show/hide currency, FX rates, chipset update info, monthly price updates, and the price disclaimer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"></circle><circle cx="12" cy="12" r="7.4"></circle><path d="M12 2.6v2.4M12 19v2.4M21.4 12h-2.4M5 12H2.6M18.2 5.8l-1.7 1.7M7.5 16.7l-1.7 1.7M18.2 18.2l-1.7-1.7M7.5 7.3 5.8 5.6"></path></svg></button>
+      <button id="themeToggle" title="Toggle light/dark theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"></path></svg></button>
+      <button id="kofiBtn" title="Buy Pavel a coffee — support this extension"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 9h12v6.5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9z"></path><path d="M17.5 10.5H19a2.5 2.5 0 0 1 0 5h-1.5"></path><path d="M9 5c0 .9-.7 1-.7 2M13 5c0 .9-.7 1-.7 2"></path></svg></button>
+    </div>
+  </header>
+  <!-- Collapsed-by-default Settings drawer content, top-to-bottom:
+       Language, Currency, FX rates, Upload .xls, Chipset data, then the
+       disclaimer text. Opening/closing #advancedBtn expands/collapses this
+       whole block, pushing the always-visible view tabs (and whichever
+       view is active) further down rather than sitting between them. -->
+  <div class="chipset-section" id="languageSection">
+    <span class="label" id="languageLabel">Language</span>
+    <div class="language-flags" id="languageFlags"></div>
+  </div>
+  <div class="currency-section" id="currencySection">
+    <span class="label" id="currencyLabel">Currency</span>
+    <div class="currency-toggle">
+      <button id="currencyUSD">$ USD</button>
+      <button id="currencyEUR" class="active">€ EUR</button>
+      <button id="currencyGBP">£ GBP</button>
+      <button id="currencyJPY">¥ JPY</button>
+      <button id="currencyOFF" title="Hide all prices — keep chipset info and FOV filtering">🚫</button>
+    </div>
+  </div>
+  <div class="chipset-section" id="fxSection">
+    <div class="row-line">
+      <span class="label" id="fxLabel">FX rates (EUR→USD/JPY)</span>
+      <button id="refreshFx">Update</button>
+    </div>
+    <div class="status" id="fxStatus">loading…</div>
+  </div>
+  <div class="chipset-section" id="monthlySection">
+    <div class="row-line">
+      <span class="label" id="monthlyLabel">UPLOAD .XLS PRICELIST</span>
+      <button id="settingsBtn" title="Update monthly prices">Open</button>
+    </div>
+  </div>
+  <div class="chipset-section" id="chipsetSection">
+    <div class="row-line">
+      <span class="label" id="chipsetLabel">Chipset data (CamStreamer)</span>
+      <button id="refreshChipsets">Update</button>
+    </div>
+    <div class="status" id="chipsetStatus">loading…</div>
+  </div>
+  <footer id="footerSection">
+    <span id="footerText">Prices are Axis MSRP (list price), not street price. EUR is from the AXIS Price List, July 2026 (camera products only - EUR isn't available for non-camera categories like 2N, recorders, or accessories). USD for those same products is calculated from the EUR price at the EUR/USD rate in effect when this list was last generated (1 EUR ≈ 1.1387 USD, per xe.com on 2026-07-14) - it is not an independently published Axis USD price list, so treat it as an estimate. JPY is converted live from the EUR price using the current EUR/JPY reference rate (ECB, via api.frankfurter.dev), refreshed on the same weekly schedule as chipset data. Chipset info is sourced from CamStreamer's published app-compatibility list, not Axis. None of this refreshes automatically except chipset data and FX rates via the weekly background check or the Update button above.</span>
+  </footer>
+  <div class="link-row">
+    <a href="https://www.axis.com/support/tools/product-selector" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h12M20 17h0"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="18" cy="17" r="2"/></svg><span>Selector</span></a>
+    <a href="https://www.axis.com/products" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>Products</span></a>
+    <a href="https://my.axis.com/" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg><span>My Axis</span></a>
+  </div>
+  <!-- Category quick links, filled by popup.js from axisFavoriteCategories
+       (hearted on axis.com/products). Hidden entirely when empty. -->
+  <div class="cat-row" id="catRow" hidden></div>
+  <div class="view-tabs">
+    <!-- Icon stacked over the label. The label lives in its own span so
+         popup.js can swap the translated text without wiping the SVG.
+         Inline SVG (currentColor) instead of emoji so the three tabs
+         render identically on macOS / Windows / Linux. -->
+    <button type="button" id="catalogTabBtn" class="fovmap-toggle-btn active" data-view="catalog"><svg class="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"></rect><rect x="10.5" y="10.5" width="3" height="3" rx="0.5"></rect><path d="M10 7V4M14 7V4M10 20v-3M14 20v-3M7 10H4M7 14H4M20 10h-3M20 14h-3"></path></svg><span class="tab-label" id="catalogTabLabel">Chipset &amp;&#10;MSRP</span></button>
+    <button type="button" id="fovMapToggleBtn" class="fovmap-toggle-btn" data-view="fovmap"><svg class="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19L4.5 7.5"></path><path d="M12 19l7.5-11.5"></path><path d="M4.5 7.5A13.7 13.7 0 0 1 19.5 7.5"></path><circle cx="12" cy="19" r="2"></circle></svg><span class="tab-label" id="fovMapToggleLabel">FoV Map&#10;Tool</span></button>
+    <button type="button" id="findCamsBtn" class="fovmap-toggle-btn" data-view="findcams" title="Scan your local network for Axis cameras (model, serial, firmware, MSRP)"><svg class="tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"></circle><path d="M12 7.5a4.5 4.5 0 0 1 4.5 4.5"></path><path d="M12 3.5a8.5 8.5 0 0 1 8.5 8.5"></path><path d="M4.4 15.6A8.5 8.5 0 0 0 12 20.5"></path></svg><span class="tab-label" id="findCamsLabel">IP Utility&#10;Scanner</span></button>
+  </div>
+  <!-- Fixed-size viewport, one view visible at a time - see .view-area. -->
+  <div class="view-area">
+    <div class="view active" id="catalogView">
+      <div class="angle-row">
+        <div class="angle-label-row">
+          <span id="angleFieldLabel">Required FoV</span>
+          <span class="angle-value-group">
+            <input type="number" id="angleValueInput" min="0" max="360" step="1" value="0">
+            <span>°</span>
+          </span>
+        </div>
+        <input type="range" id="angleSlider" min="0" max="360" step="1" value="0"
+               title="Only show cameras that can cover at least this many degrees - a PTZ's full pan range counts, not just its lens width. Same requirement drawing a cone on the map sets.">
+      </div>
+      <div class="search-wrap">
+        <input id="search" type="text" placeholder="Search model or part number…" autofocus>
+        <button type="button" id="filterBtnCatalog" class="filter-btn" title="Filter by chipset and change the sort order"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"></path></svg><span class="filter-btn-label">Filter</span></button>
+      </div>
+      <div id="results"></div>
+    </div>
+    <div class="view" id="fovMapView">
+      <div id="fovMapCanvas"></div>
+      <div class="fovmap-popup-hint-row">
+        <p class="fovmap-popup-step-text" id="fovMapStepText"></p>
+        <button type="button" id="fovMapBtn" title="Open the full-screen FOV Map tool">⛶ Full Screen</button>
+        <button type="button" id="fovMapResetBtn">Reset</button>
+      </div>
+      <!-- Matches for the cone currently drawn (or the Required FoV slider
+           in the Chipset & MSRP tab - both write the same mapAngleRequired).
+           Favorites first, then tightest FoV fit. -->
+      <div class="fovmap-results-head">
+        <span id="fovMapResultsHeading">Matching models</span>
+        <span class="fovmap-results-right">
+          <span class="fovmap-results-count" id="fovMapResultsCount"></span>
+          <button type="button" id="filterBtnFov" class="filter-btn" title="Filter by chipset and change the sort order"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"></path></svg><span class="filter-btn-label">Filter</span></button>
+        </span>
+      </div>
+      <div id="fovMapResults"></div>
+    </div>
+    <div class="view" id="findCamsView">
+      <div class="findcams-popup-head">
+        <span id="findCamsHeading">Axis cameras on this network</span>
+        <button type="button" id="findCamsPageBtn" title="Open Find Cams full-page">⛶</button>
+      </div>
+      <div id="findCamsMount"></div>
+    </div>
+  </div>
+  <!-- Shared by both filter buttons; built and positioned by popup.js. -->
+  <div class="filter-pop" id="filterPop" hidden></div>
+  <link rel="stylesheet" href="vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="find-cams.css">
+  <script src="i18n.js"></script>
+  <script src="catalog-data.js"></script>
+  <script src="chipset-data.js"></script>
+  <script src="fov-data.js"></script>
+  <script src="vendor/maplibre-gl-csp.js"></script>
+  <script src="axis-map.js"></script>
+  <script src="find-cams.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

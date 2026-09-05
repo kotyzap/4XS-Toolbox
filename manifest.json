@@ -1,0 +1,109 @@
+{
+  "manifest_version": 3,
+  "name": "4XS Toolbox",
+  "version": "5.0",
+  "description": "Chipset info, MSRP (upload your price list), FOV selector, IP Utility for Axis cameras. By Pavel Kotyza — not affiliated with Axis.",
+  "homepage_url": "https://4xs.dev",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "scripting"
+  ],
+  "optional_host_permissions": [
+    "http://*/*"
+  ],
+  "host_permissions": [
+    "https://camstreamer.com/*",
+    "https://tiles.openfreemap.org/*",
+    "https://api.frankfurter.dev/*",
+    "https://get.geojs.io/*",
+    "https://www.axis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.axis.com/support/tools/product-selector*",
+        "https://www.axis.com/*/support/tools/product-selector*"
+      ],
+      "js": [
+        "i18n.js",
+        "catalog-data.js",
+        "chipset-data.js",
+        "fov-data.js",
+        "vendor/maplibre-gl-csp.js",
+        "axis-map.js",
+        "content.js"
+      ],
+      "css": [
+        "vendor/maplibre-gl.css",
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.axis.com/search*",
+        "https://www.axis.com/*/search*"
+      ],
+      "js": [
+        "i18n.js",
+        "catalog-data.js",
+        "chipset-data.js",
+        "search-content.js"
+      ],
+      "css": [
+        "search-content.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.axis.com/products/*",
+        "https://www.axis.com/*/products/*"
+      ],
+      "js": [
+        "i18n.js",
+        "catalog-data.js",
+        "chipset-data.js",
+        "products-content.js"
+      ],
+      "css": [
+        "products-content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "vendor/maplibre-gl-csp-worker.js",
+        "vendor/maplibre-gl.css"
+      ],
+      "matches": [
+        "https://www.axis.com/*"
+      ]
+    }
+  ]
+}

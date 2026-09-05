@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FOV Map Camera Selector — 4XS Toolbox</title>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="fov-map.css">
+</head>
+<body>
+  <header>
+    <h1><span id="pageHeadingText">AXIS FOV Map Camera Selector</span> <span class="version" id="versionLabel"></span></h1>
+    <div class="header-actions">
+      <button id="panelToggle" title="Show/hide settings">⚙</button>
+      <button id="themeToggle" title="Toggle light/dark theme">🌓</button>
+    </div>
+  </header>
+
+  <div id="layout">
+    <div id="mapWrap">
+      <div id="map"></div>
+    </div>
+
+    <!-- Settings sidebar. Each box is individually collapsible via its own
+         heading (which doubles as the toggle button), and the whole sidebar
+         can be hidden with the ⚙ button in the header to give the map the
+         full width. All label text is set by fov-map.js applyStaticI18nLabels(). -->
+    <aside id="panel">
+      <div id="stepBox" class="box">
+        <button type="button" class="box-header" data-target="stepBody" aria-expanded="true">
+          <span id="stepHeading">1. Place the camera &amp; draw the cone</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="box-body" id="stepBody">
+          <p id="stepText" class="hint">Click the map to drop the camera location.</p>
+          <button id="resetBtn" class="btn-secondary">Reset</button>
+        </div>
+      </div>
+
+      <div id="adjustBox" class="box" hidden>
+        <button type="button" class="box-header" data-target="adjustBody" aria-expanded="true">
+          <span id="adjustHeading">2. Fine-tune</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="box-body" id="adjustBody">
+          <label class="field">
+            <span id="angleFieldLabel">Required horizontal angle</span>
+            <div class="field-row">
+              <input type="range" id="angleSlider" min="1" max="360" step="1">
+              <input type="number" id="angleInput" min="1" max="360" step="1">
+              <span>°</span>
+            </div>
+          </label>
+          <label class="field">
+            <span id="rangeFieldLabel">Coverage depth (informational — no per-model range data yet)</span>
+            <div class="field-row">
+              <input type="range" id="rangeSlider" min="1" max="2000" step="1">
+              <input type="number" id="rangeInput" min="1" max="20000" step="1">
+              <span>m</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div id="filterBox" class="box" hidden>
+        <button type="button" class="box-header" data-target="filterBody" aria-expanded="true">
+          <span id="filterHeading">3. Filter &amp; sort</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="box-body" id="filterBody">
+          <label class="field">
+            <span id="sortByLabel">Sort by</span>
+            <select id="sortSelect">
+              <option id="sortOptionFit" value="fit">Tightest FOV fit (least overkill)</option>
+              <option id="sortOptionPrice" value="price">Price, low to high</option>
+            </select>
+          </label>
+          <label class="field checkbox-field">
+            <input type="checkbox" id="camstreamerOnly">
+            <span id="camstreamerOnlyLabel">CamStreamer App supported only (ARTPEC-6/7, ARTPEC-8, ARTPEC-9)</span>
+          </label>
+        </div>
+      </div>
+
+      <div id="summaryBox" class="box" hidden>
+        <button type="button" class="box-header" data-target="summaryBody" aria-expanded="true">
+          <span id="summaryHeading">Match details</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="box-body" id="summaryBody">
+          <p id="resultsSummary" class="hint"></p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Results stripe along the bottom: one card per matching model, scrolled
+       horizontally. Collapsible so the map can use the full height. -->
+  <section id="resultsStripe" hidden>
+    <div class="stripe-header">
+      <button type="button" id="stripeToggle" aria-expanded="true">
+        <span class="chev">▾</span>
+        <span id="resultsHeading">Matching Axis models</span>
+        <span id="resultsCount" class="stripe-count"></span>
+      </button>
+      <span id="stripeHint" class="stripe-hint">Scroll sideways to browse →</span>
+    </div>
+    <div id="results" class="stripe-track"></div>
+  </section>
+
+  <script src="i18n.js"></script>
+  <script src="vendor/maplibre-gl-csp.js"></script>
+  <script src="axis-map.js"></script>
+  <script src="catalog-data.js"></script>
+  <script src="chipset-data.js"></script>
+  <script src="fov-data.js"></script>
+  <script src="fov-map.js"></script>
+</body>
+</html>

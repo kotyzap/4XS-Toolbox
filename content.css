@@ -1,0 +1,629 @@
+/* Marker class applied by content.js's getImgContainer() to whatever
+   element it resolves as the image wrapper - see content.js for why this
+   is no longer a fixed Axis classname. */
+.axis-img-container {
+  position: relative;
+}
+
+/* Both badges mimic the site's own "New" tag (.nav-card__new): flat,
+   semi-transparent Axis yellow, no border/shadow/radius, uppercase 11px/700.
+   Stacked bottom-center (chipset directly above price) rather than
+   top-right, so they don't sit over whatever the card reveals on hover in
+   that corner (e.g. a link/icon to the product page). */
+
+.axis-chipset-badge {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-block;
+  padding: 2px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(26, 26, 26, 0.8);
+  white-space: nowrap;
+  cursor: help;
+  pointer-events: none;
+}
+
+.axis-msrp-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: inline-block;
+  padding: 2px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: none;
+  color: rgba(0, 0, 0, 0.85);
+  background-color: #ffcc33;
+  border: 1px solid #e0b400;
+  white-space: nowrap;
+  cursor: help;
+  pointer-events: none;
+}
+
+/* Favorite toggle (♡ -> 🧡) - a corner overlay rather than stacked with the
+   chipset/price badges above, so it doesn't compete with them for the same
+   bottom-center spot and stays a clearly separate, clickable control (the
+   other two badges are pointer-events:none tooltips only). */
+.axis-fav-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 6;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.axis-fav-badge:hover {
+  background-color: #ffffff;
+}
+
+/* Chipset filter panel */
+
+#axis-chipset-filter-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483000;
+  width: 220px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  color: #1a1a1a;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+  /* Matches .axis-fovmap-column's own width transition below, so the panel's
+     edge and the map column's reveal move together as one coordinated
+     slide instead of the panel resizing instantly while the map pops in. */
+  transition: width 0.28s ease;
+}
+
+/* Widened to the left (right stays pinned at 16px) when the FOV Map column
+   is showing - single panel, single window, rather than a second floating
+   one next to it. */
+#axis-chipset-filter-panel.axis-filter-panel-expanded {
+  width: 610px;
+}
+
+.axis-chipset-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #1a1a1a;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  /* Same dark-header + yellow-accent treatment as the toolbar popup, so the
+     two surfaces read as one product instead of separately styled UIs. */
+  border-bottom: 3px solid #ffcc33;
+}
+
+.axis-chipset-panel-toggle {
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.axis-chipset-panel-body {
+  overflow-y: auto;
+  padding: 8px 10px 10px;
+}
+
+#axis-chipset-filter-panel.axis-chipset-panel-collapsed .axis-chipset-panel-body {
+  display: none;
+}
+
+/* Single-panel layout: map column (left) + existing controls (right), laid
+   out side by side once the FOV Map column is revealed. align-items:stretch
+   (rather than flex-start) makes the map column's height match whatever
+   height the right column's own content already gives the panel, instead of
+   the map imposing its own fixed height - that's what keeps opening the map
+   from growing/jumping the whole panel taller. */
+.axis-filter-body-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.axis-fovmap-column {
+  width: 380px;
+  /* flex-basis needs to be a fixed value (not part of the width transition)
+     so the width property alone drives the slide animation below. */
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.28s ease;
+}
+
+/* Slides shut (width -> 0) instead of vanishing via display:none, so
+   opening/closing reads as the map sliding in from the left side of the
+   panel rather than an abrupt jump. */
+.axis-fovmap-column.axis-fovmap-column-hidden {
+  width: 0;
+}
+
+.axis-filter-right-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.axis-chipset-panel-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.axis-chipset-panel-options .axis-chipset-panel-row span {
+  font-size: 12px;
+}
+
+/* Big call-to-action button that widens this same panel to the left and
+   reveals the FOV Map column. Full-width and more prominent than the
+   checkbox rows around it, since it opens a whole separate tool rather than
+   toggling one filter dimension. */
+.axis-fovmap-toggle-btn {
+  width: 100%;
+  /* Flex so the inline SVG and the label centre as one unit; buttons don't
+     inherit the page font by default, hence font-family: inherit. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #e0b400;
+  background: rgba(255, 204, 51, 0.2);
+  color: #1a1a1a;
+  border-radius: 6px;
+  padding: 7px 8px;
+  margin-bottom: 6px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+
+.axis-fovmap-toggle-btn svg {
+  flex: 0 0 auto;
+}
+
+.axis-fovmap-toggle-btn:hover {
+  background: rgba(255, 204, 51, 0.35);
+}
+
+/* Quick links - same buttons and treatment as the toolbar popup's rows, so
+   the two surfaces read as one product. Two per row: the panel is 220px
+   wide, which leaves each button about 84px of content - the same budget the
+   popup's four-up category row has, so the same 12px icons and labels fit. */
+.axis-quick-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.axis-quick-link-row {
+  display: flex;
+  gap: 6px;
+}
+
+.axis-quick-link {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid #e0b400;
+  background: rgba(255, 204, 51, 0.1);
+  color: #1a1a1a;
+  border-radius: 6px;
+  padding: 5px 5px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.axis-quick-link:hover {
+  background: rgba(255, 204, 51, 0.3);
+}
+
+.axis-quick-link svg {
+  flex: 0 0 auto;
+}
+
+.axis-quick-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Separates navigation above from the controls that actually filter the
+   page below. */
+.axis-quick-links-divider {
+  border-top: 1px solid #e4e4e4;
+  margin: 0 0 8px;
+}
+
+.axis-fovmap-toggle-btn-active {
+  background: #ffcc33;
+  border-color: #1a1a1a;
+}
+
+/* A checkbox row like the others, just tinted to read as a shortcut that
+   toggles three of the labels further down the list rather than its own
+   independent filter dimension. */
+.axis-chipset-panel-preset {
+  margin: 2px 0;
+  padding: 4px 6px !important;
+  border: 1px solid #e0b400;
+  border-radius: 4px;
+  background: rgba(255, 204, 51, 0.2);
+}
+
+.axis-chipset-panel-preset:hover {
+  background: rgba(255, 204, 51, 0.35);
+}
+
+.axis-chipset-panel-preset span {
+  font-weight: 700;
+}
+
+/* ACAP dropdown row - same tinted "shortcut" treatment as the preset
+   checkbox row it replaced, just laid out label-left / select-right instead
+   of checkbox-left. */
+.axis-acap-panel-row {
+  justify-content: space-between;
+  cursor: default;
+}
+
+.axis-acap-select {
+  flex: 0 0 auto;
+  max-width: 62%;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a1a;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 2px 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.axis-fov-panel-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: default;
+  padding: 4px 0 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid #eee;
+}
+
+.axis-fov-panel-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Guarantees breathing room between the label and the value even when
+     the row's own width happens to leave space-between nothing to
+     distribute (that's what made them run together with no gap at all). */
+  gap: 8px;
+  font-size: 12px;
+}
+
+/* The on-page Favorites review list (.axis-favorites-panel-*) moved to the
+   Settings page (options.html) - see content.js's buildFilterPanel for the
+   note on why. Rules removed here accordingly. */
+
+.axis-fov-panel-value-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 12px;
+  color: #6b6b6b;
+}
+
+.axis-fov-panel-value-input {
+  width: 44px;
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 12px;
+  color: #1a1a1a;
+  text-align: right;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 1px 4px;
+  background: #fff;
+  /* Chrome's number input spinner arrows read as noise at this size */
+  -moz-appearance: textfield;
+}
+.axis-fov-panel-value-input::-webkit-outer-spin-button,
+.axis-fov-panel-value-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.axis-fov-panel-slider {
+  width: 100%;
+  accent-color: #ffcc33;
+  cursor: pointer;
+}
+
+.axis-chipset-panel-divider {
+  border-top: 1px solid #eee;
+  margin: 4px 0 8px;
+}
+
+.axis-chipset-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.axis-chipset-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.axis-chipset-panel-row input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.axis-chipset-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+}
+
+.axis-chipset-panel-count {
+  font-size: 11px;
+  color: #6b6b6b;
+}
+
+.axis-chipset-panel-clear {
+  border: 1px solid #e0b400;
+  background: rgba(255, 204, 51, 0.2);
+  color: #1a1a1a;
+  border-radius: 4px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.axis-chipset-panel-clear:hover {
+  background: #ffcc33;
+}
+
+/* FOV Map tool - now the left column inside the single Filters panel
+   (see .axis-fovmap-column above) rather than a separate floating panel. */
+
+#axis-fovmap-canvas {
+  width: 100%;
+  /* Fills whatever height the column has left after the hint row below -
+     no fixed height, so the map's total size tracks the panel's own height
+     (set by the right column's content) instead of the other way around. */
+  flex: 1 1 auto;
+  min-height: 220px;
+  border: 1px solid #e4e4e4;
+  border-radius: 4px;
+}
+
+.axis-fovmap-hint-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 0;
+  /* Pinned to the bottom of the column (which itself is stretched to match
+     the right column's height - see .axis-filter-body-row) so Reset always
+     lands at the same spot, regardless of how long the current step's hint
+     text is. */
+  flex: 0 0 auto;
+}
+
+.axis-fovmap-step-text {
+  flex: 1 1 auto;
+  font-size: 11.5px;
+  color: #6b6b6b;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.axis-fovmap-reset-btn {
+  flex: 0 0 auto;
+  border: 1px solid #e0b400;
+  background: rgba(255, 204, 51, 0.2);
+  color: #1a1a1a;
+  border-radius: 4px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.axis-fovmap-reset-btn:hover {
+  background: #ffcc33;
+}
+
+.axis-fovmap-edge-handle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e0b400;
+  border: 2px solid #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  cursor: grab;
+}
+.axis-fovmap-edge-handle:active {
+  cursor: grabbing;
+}
+
+.axis-fovmap-camera-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  background: #1a1a1a;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+  cursor: grab;
+}
+.axis-fovmap-camera-icon:active {
+  cursor: grabbing;
+}
+
+/* Narrow viewports: an expanded 610px-wide panel plus the site's own layout
+   can run out of room - shrink the map column and the panel's expanded
+   width together rather than letting it overflow off-screen. */
+@media (max-width: 900px) {
+  #axis-chipset-filter-panel.axis-filter-panel-expanded {
+    width: 420px;
+  }
+  .axis-fovmap-column {
+    width: 190px;
+    flex: 0 0 auto;
+  }
+  #axis-fovmap-canvas {
+    min-height: 150px;
+  }
+}
+
+/* Chipset/Price badges next to the product name on the standalone
+   product-selector product page (/support/tools/product-selector/product/
+   <id>) - injected by injectProductPageBadges() in content.js. Same visual
+   style as products-content.js's .axis-product-chipset-badge/
+   -price-badge (duplicated here since each content script only loads its
+   own stylesheet), for a consistent look with the equivalent badges on
+   axis.com/products/* pages. */
+.axis-product-selector-page-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.axis-product-selector-page-badges .axis-product-price-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(255, 204, 51, 0.85);
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.axis-product-selector-page-badges .axis-product-chipset-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  background-color: #1a1a1a;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+/* Favorite heart on the comparison page's own header cards
+   (injectCompare2Favorites in content.js) - .axis-fav-badge's default
+   top-right position collides with the site's own "✕" remove button
+   there, so it's moved to the top-left corner instead. */
+.axis-compare2-card {
+  position: relative;
+}
+.axis-compare2-card .axis-fav-badge {
+  top: 6px;
+  right: auto;
+  left: 6px;
+}
+
+/* Basemap unavailable (tile provider refused us) - a plain graticule so the
+   map area still reads as a map surface, plus a one-line note. The coverage
+   wedge, the pin and the handles are all drawn by us on top of this. */
+.maplibregl-map.axis-map-nobasemap {
+  background-color: #eef1f3;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.axis-map-nobasemap-note {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 500;
+  max-width: 92%;
+  padding: 5px 10px;
+  border: 1px solid #e0b400;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1a1a1a;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}

@@ -1,0 +1,413 @@
+:root {
+  --bg: #ffffff;
+  --panel-bg: #fafafa;
+  --text: #1a1a1a;
+  --muted: #6b6b6b;
+  --border: #e4e4e4;
+  --accent: #ffcc33;
+  --accent-strong: #e0b400;
+  --accent-ink: #1a1a1a;
+  --header-bg: #1a1a1a;
+  --header-text: #ffffff;
+  --header-muted: #b8b8b8;
+  --error: #c8102e;
+  --good: #1f8a4c;
+}
+[data-theme="dark"] {
+  --bg: #1c1c1c;
+  --panel-bg: #222222;
+  --text: #f0f0f0;
+  --muted: #a0a0a0;
+  --border: #333333;
+  --header-bg: #0f0f0f;
+  --error: #ff5c72;
+  --good: #4fd382;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+header {
+  padding: 10px 16px;
+  background: var(--header-bg);
+  color: var(--header-text);
+  border-bottom: 3px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+}
+header h1 { font-size: 15px; margin: 0; display: flex; align-items: baseline; gap: 6px; }
+header .version { font-size: 10px; font-weight: 400; color: var(--header-muted); }
+.header-actions { display: flex; gap: 6px; }
+#themeToggle, #panelToggle {
+  border: 1px solid rgba(255,255,255,0.3);
+  background: transparent;
+  color: var(--header-text);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+#themeToggle:hover, #panelToggle:hover { background: rgba(255,255,255,0.12); }
+#panelToggle.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* Map + settings sidebar share the upper region; the results stripe sits
+   below them, so the map never gets overlapped by the cards. */
+#layout { flex: 1 1 auto; display: flex; min-height: 0; }
+#mapWrap { flex: 1 1 auto; min-width: 0; position: relative; }
+#map { position: absolute; inset: 0; }
+
+#panel {
+  width: 330px;
+  flex: 0 0 330px;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 10px;
+}
+body.panel-hidden #panel { display: none; }
+
+/* ---- Collapsible boxes ---- */
+.box {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.box-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+}
+.box-header:hover { background: var(--panel-bg); }
+.box-header .chev {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.box-header[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.box-body { padding: 0 12px 12px; }
+.box-body[hidden] { display: none; }
+
+.hint { font-size: 12px; color: var(--muted); margin: 0 0 8px; line-height: 1.45; }
+
+.btn-secondary {
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-secondary:hover { background: var(--border); }
+
+.field { display: block; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.field:last-child { margin-bottom: 0; }
+.field-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.field-row input[type="range"] { flex: 1 1 auto; min-width: 0; }
+.field select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+}
+.checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  line-height: 1.4;
+}
+.checkbox-field input[type="checkbox"] { flex: 0 0 auto; margin-top: 1px; }
+.field-row input[type="number"] {
+  width: 62px;
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+}
+
+/* ---- Bottom results stripe ---- */
+#resultsStripe {
+  flex: 0 0 auto;
+  background: var(--panel-bg);
+  border-top: 2px solid var(--accent);
+  display: flex;
+  flex-direction: column;
+  max-height: 58vh;
+}
+.stripe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+}
+#stripeToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px 0;
+}
+#stripeToggle .chev { font-size: 12px; color: var(--muted); transition: transform 0.15s ease; }
+#stripeToggle[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.stripe-count {
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 10px;
+  padding: 1px 9px;
+}
+.stripe-hint { font-size: 11.5px; color: var(--muted); }
+
+/* The horizontally scrolling track of result cards. */
+.stripe-track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 12px 14px 14px;
+  scroll-snap-type: x proximity;
+}
+.stripe-track[hidden] { display: none; }
+.stripe-track .empty-hint {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 620px;
+}
+
+.result-card {
+  flex: 0 0 auto;
+  width: 250px;
+  scroll-snap-align: start;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.result-card.cs-supported { border-left-color: var(--good); }
+
+/* Product thumbnail, lazily filled from the model's own axis.com page. The
+   box keeps its height whether or not an image ever arrives, so cards in a
+   row stay aligned. */
+.card-thumb {
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.card-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.card-thumb.has-img { background: #ffffff; }
+
+/* Chipset + price badges styled to match the ones this extension injects
+   onto axis.com itself (see .axis-chipset-badge / .axis-msrp-badge in
+   content.css): dark uppercase chipset pill, Axis-yellow price pill, both
+   square-cornered rather than rounded. */
+.axis-badges { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.axis-chipset-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(26, 26, 26, 0.88);
+  white-space: nowrap;
+}
+[data-theme="dark"] .axis-chipset-pill { background-color: rgba(0, 0, 0, 0.75); }
+.axis-price-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.85);
+  background-color: #ffcc33;
+  border: 1px solid #e0b400;
+  white-space: nowrap;
+}
+
+/* Model name doubles as a link to that model's page on axis.com. Styled as
+   normal card text until hovered, so the card doesn't read as a wall of
+   blue links. */
+.result-card a.model {
+  display: block;
+  font-size: 15.5px;
+  font-weight: bold;
+  line-height: 1.25;
+  word-break: break-word;
+  color: var(--text);
+  text-decoration: none;
+}
+/* Only an <a> that actually has an href is treated as clickable - names we
+   haven't confirmed resolve to a product page carry no href and stay inert
+   plain text. */
+.result-card a.model:not([href]) { cursor: default; }
+.result-card a.model[href]:hover,
+.result-card a.model[href]:focus-visible {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+[data-theme="dark"] .result-card a.model[href]:hover,
+[data-theme="dark"] .result-card a.model[href]:focus-visible { color: var(--accent); }
+.result-card .variant {
+  display: block;
+  font-size: 12.5px;
+  font-weight: normal;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.result-card .spec-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding-top: 5px;
+}
+.result-card .spec-row .spec-val { color: var(--text); font-weight: bold; }
+.result-card .badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: auto; }
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.badge.cs { background: var(--good); color: #fff; }
+.badge.plain { background: var(--panel-bg); border: 1px solid var(--border); color: var(--text); }
+
+/* Camera-class badges (PTZ / panoramic / multi-sensor). Outlined rather than
+   filled so they read as a qualifier on the FOV figure, not as a feature
+   claim competing with the CamStreamer badge. */
+.badge.type {
+  background: transparent;
+  border: 1px solid currentColor;
+  cursor: help;
+}
+.badge.type.ptz { color: #1f6fb2; }
+.badge.type.pano { color: #7a4fb5; }
+.badge.type.multi { color: #b56a1f; }
+[data-theme="dark"] .badge.type.ptz { color: #6fb6f0; }
+[data-theme="dark"] .badge.type.pano { color: #bfa0e8; }
+[data-theme="dark"] .badge.type.multi { color: #e0a85f; }
+
+/* SKU badge: a real <button>, since clicking it copies the part number. */
+button.sku-badge {
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+button.sku-badge:hover { background: var(--border); }
+button.sku-badge:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
+button.sku-badge.copied {
+  background: var(--good);
+  border-color: var(--good);
+  color: #fff;
+}
+
+.edge-handle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  border: 2px solid #fff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  cursor: grab;
+}
+.edge-handle:active { cursor: grabbing; }
+
+/* Narrow windows: stack the sidebar under the map rather than squeezing
+   the map into a sliver. */
+@media (max-width: 760px) {
+  #layout { flex-direction: column; }
+  #panel { width: auto; flex: 0 0 auto; border-left: 0; border-top: 1px solid var(--border); max-height: 40vh; }
+  #mapWrap { min-height: 240px; }
+  .result-card { width: 220px; }
+}
+
+/* Basemap unavailable (tile provider refused us) - a plain graticule so the
+   map area still reads as a map surface, plus a one-line note. The coverage
+   wedge, the pin and the handles are all drawn by us on top of this. */
+.maplibregl-map.axis-map-nobasemap {
+  background-color: #eef1f3;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.axis-map-nobasemap-note {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 500;
+  max-width: 92%;
+  padding: 5px 10px;
+  border: 1px solid #e0b400;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1a1a1a;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
