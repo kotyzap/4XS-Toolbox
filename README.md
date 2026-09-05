@@ -4,10 +4,6 @@ A browser toolbox for anyone who works with Axis cameras day to day: MSRP list p
 
 Built for sales and channel teams, marketing, Axis resellers and partners, and Axis employees. (Not affiliated with or endorsed by Axis Communications — an independent tool built for people who work with their cameras.)
 
-## Japanese localization
-
-The popup, options/monthly-update page, FOV Map Camera Selector, and every badge/tooltip injected into axis.com (Product Selector, search, product/category pages) switch to full Japanese automatically whenever any one of these is true: JPY is selected as the currency, the browser's own UI language is Japanese, or (on axis.com itself) the page is the `/ja-jp/`-style Japanese-locale slice of the site. No manual language toggle is needed - `i18n.js` (loaded first everywhere) detects this once and every other script/page reacts to it, including live switching if you change currency while a page is already open. Technical terms and brand/product names (Axis, ARTPEC, CamStreamer, EUR/USD/GBP/JPY, model numbers) are kept in English/roman form, matching the tone of the extension's existing Japanese footer disclaimer.
-
 ## What it shows, and where
 
 - **Product Selector** (axis.com/support/tools/product-selector) — every camera tile gets a price badge and, where known, a chipset label. A floating chipset filter panel lets you narrow the whole page down to specific chipset generations (e.g. only cameras with CamStreamer app support), and series can be sorted cheapest-first.
