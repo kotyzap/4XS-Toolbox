@@ -394,7 +394,7 @@
     section { padding: 64px 20px; }
   }
 
-  /* ---------- v5.0 additions ---------- */
+  /* ---------- v5.2 additions ---------- */
   .shot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
   .shot-pair figure { margin: 0; }
   .shot-pair img { border: 1px solid var(--border); }
@@ -438,7 +438,7 @@
   .lang-hello[dir="rtl"] { text-align: right; }
   .lang-flags { max-width: 274px; }
   @media (max-width: 640px) {
-    /* The brand's second line ("Chrome & Firefox · v5.0") is long enough to
+    /* The brand's second line ("Chrome & Firefox · v5.2") is long enough to
        wrap into the nav controls on a phone - the name alone is enough there. */
     .brand-text .t2 { display: none; }
     /* Let the brand name ellipsize rather than letting a longer localized
@@ -459,7 +459,7 @@
       <span class="brand-mark">4XS</span>
       <span class="brand-text">
         <span class="t1">4XS Toolbox</span>
-        <span class="t2">Chrome ＆ Firefox · v5.0</span>
+        <span class="t2">Chrome ＆ Firefox · v5.2</span>
       </span>
     </a>
     <nav class="nav-links">
@@ -490,7 +490,7 @@
     <div class="hero-grid">
       <div class="hero-copy">
         <div class="tag-row">
-          <span class="tag tag-accent">Axis カメラ選定ツール · v5.0</span>
+          <span class="tag tag-accent">Axis カメラ選定ツール · v5.2</span>
           <span class="tag">無料 · Chrome ＆ Firefox</span>
         </div>
         <h1><span id="hero-h1a">最適な</span><br><span id="hero-h1b">Axis カメラを。</span></h1>
@@ -503,7 +503,7 @@
           <div><div class="stat-num">322</div><div class="stat-label">モデル</div></div>
           <div><div class="stat-num">409</div><div class="stat-label">価格付き SKU</div></div>
           <div><div class="stat-num">12</div><div class="stat-label">対応言語</div></div>
-          <div><div class="stat-num">v5.0</div><div class="stat-label">現在のビルド</div></div>
+          <div><div class="stat-num">v5.2</div><div class="stat-label">現在のビルド</div></div>
         </div>
       </div>
       <figure class="hero-shot">
@@ -552,10 +552,21 @@
 
       <div class="feature-card">
         <figure class="feature-figure feature-figure-inset">
-          <img src="img/v5-popup-filter.png" alt="The popup with the Filter popover open: sort options for Best fit, Price low to high, Price high to low and FoV widest first, plus chipset checkboxes for ARTPEC-9, ARTPEC-8, ARTPEC-6/7, ARTPEC-3/4/5 and Ambarella, with ARTPEC-8 ticked and the results list behind narrowed to ARTPEC-8 cameras" style="width: 62%; max-width: 340px;">
+          <img src="img/v5-2-shortcuts-picker.png" alt="ショートカット パネルを開いた 4XS Toolbox のポップアップ。Axis 製品カテゴリーのチェックボックス一覧で、Analytics・Body worn・Cameras・Intercoms が選択され、残りは選択できない状態。下部に「1 行に収まるのは 4 件までです」の注記" style="width: 62%; max-width: 330px;">
         </figure>
         <div class="feature-body">
           <div class="feature-kicker">FEATURE / 02</div>
+          <h3>よく開くカテゴリーを 4 つ</h3>
+          <p>Axis の製品カテゴリーはポップアップ内から選べます — クイックリンク行の末尾の <strong>+</strong> です。axis.com でタイルにハートを付ける従来の方法もそのまま使え、どちらも同じ 4 件のショートカットに書き込まれ、常に同期します。上限は axis.com と同じ 4 件で、ラベルが省略表示にならないようにしています。</p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <figure class="feature-figure feature-figure-inset">
+          <img src="img/v5-popup-filter.png" alt="The popup with the Filter popover open: sort options for Best fit, Price low to high, Price high to low and FoV widest first, plus chipset checkboxes for ARTPEC-9, ARTPEC-8, ARTPEC-6/7, ARTPEC-3/4/5 and Ambarella, with ARTPEC-8 ticked and the results list behind narrowed to ARTPEC-8 cameras" style="width: 62%; max-width: 340px;">
+        </figure>
+        <div class="feature-body">
+          <div class="feature-kicker">FEATURE / 03</div>
           <h3>チップセットで絞り込み、価格や画角で並べ替え</h3>
           <p>analytics が必要とする ARTPEC／Ambarella 世代に絞り込み、<strong>価格</strong>または<strong>画角の広い順</strong>で並べ替えます。どの並び順でもお気に入りは先頭に固定され、絞り込みはカタログとマップの結果に同時に適用されます。</p>
         </div>
@@ -566,7 +577,7 @@
           <img src="img/inline-badges-overview.png" alt="Axis Product Selector showing M32, M42 and M43 series cards, every one carrying an ARTPEC-8 chipset badge and a yellow price badge">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 03</div>
+          <div class="feature-kicker">FEATURE / 04</div>
           <h3>axis.com 上に直接バッジを表示</h3>
           <p>認識されたすべての製品カードに価格バッジが付き（ホバーで Axis 型番を表示）、CamStreamer にデータがあるモデルにはチップセット表示、CamStreamer ACAP 対応ならチェックマークが付きます。製品セレクター、検索結果、製品・カテゴリーページ、そして<strong>製品比較表</strong>の中にも表示されます。</p>
         </div>
@@ -577,7 +588,7 @@
           <img src="img/v5-selector-panel.png" alt="The Filters panel injected into the Axis Product Selector: a FoV Map button, quick links to Products, My Axis, IP Scanner and MSRP list, pinned category buttons, a sort-by-cheapest checkbox, a Required angle slider, an ACAP dropdown set to CamStreamer, and chipset checkboxes" style="width: 62%; max-width: 250px;">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 04</div>
+          <div class="feature-kicker">FEATURE / 05</div>
           <h3>製品セレクターにはなかった絞り込みパネル</h3>
           <p>チップセットの複数選択、必要画角のスライダー、CamStreamer 対応機種に絞り込む ACAP ドロップダウン、シリーズの安い順ソート — すべてページにその場で適用されます。上部には固定したカテゴリーとツールがワンクリックで並びます。</p>
         </div>
@@ -588,7 +599,7 @@
           <img src="img/v5-click-to-copy.png" alt="A catalogue row for AXIS Q1728-LE — 48 mm with the part number 03211-001 underlined, and a tooltip reading &quot;Click to copy 03211-001&quot;" style="width: 74%; max-width: 300px;">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 05</div>
+          <div class="feature-kicker">FEATURE / 06</div>
           <h3>クリックした項目を、そのままコピー</h3>
           <p>型番は見積書へ、モデル名はメールへ、カテゴリーは仕様書へ — 必要な項目をクリックするだけでクリップボードに入り、チェックマークで確認できます。複数個パックの SKU は <code>(10 pcs)</code> の接尾辞を除いてコピーされるため、貼り付けた番号がそのまま発注に使えます。</p>
         </div>
@@ -599,7 +610,7 @@
           <img class="lang-flags" src="img/v5-languages.png" alt="The popup&rsquo;s language row: twelve flags — English, Czech, Japanese, Spanish, German, French, Korean, Chinese, Swedish, Ukrainian, Arabic and Dutch — with English currently selected" style="width: 78%; max-width: 274px;">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 06</div>
+          <div class="feature-kicker">FEATURE / 07</div>
           <h3>あなたの言語で使えます</h3>
           <div class="lang-hello" id="lang-hello" hidden>
             <p class="hello-line" id="lang-hello-line"></p>
@@ -614,7 +625,7 @@
           <img src="img/v5-scanner-crop.png" alt="スキャン中の IP Utility スキャナー: サブネットは 192.168.1、Stop ボタン、「Scanning… 166/254 (3 found)」のステータス行、そして検出された 2 台のカメラ — 192.168.1.156 の Q1656 ボックスカメラ（ARTPEC-8）と 192.168.1.185 の M1137 ネットワークカメラ（ARTPEC-6/7）— がシリアル番号とファームウェアバージョンとともに表示されている" style="width: 88%; max-width: 380px;">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 07</div>
+          <div class="feature-kicker">FEATURE / 08</div>
           <h3>Mac と Linux にも、ついに IP Utility を</h3>
           <p>Axis が提供してきたのは <strong>Windows 版の AXIS IP Utility</strong> だけでした。Mac や Linux のインテグレーターは、Windows 機を借りるか、仮想マシンを立てるか、アドレスを当てずっぽうで試すしかありませんでした。</p>
           <p>これは同じ作業をブラウザーで行うツールです。<strong>Chrome または Firefox が動く環境ならどこでも</strong> — macOS、Windows、Linux、ChromeOS で動作します。サブネットを入力して Scan を押せば、応答した機器が順に表示されます。モデル、IP、シリアル、ファームウェア、チップセットを VAPIX 経由でカメラから直接取得し、インストールも不要、データが端末の外に出ることもありません。</p>
@@ -762,7 +773,7 @@
     <div class="footer-brand">
       <div class="footer-brand-row">
         <span class="footer-mark">4XS</span>
-        <span class="name">4XS Toolbox v5.0</span>
+        <span class="name">4XS Toolbox v5.2</span>
       </div>
       <p>制作: Pavel Kotyza · <a href="https://4xs.dev" target="_blank" rel="noopener" style="font-weight:600">4xs.dev</a>。個人プロジェクトであり、Axis Communications AB とは提携・承認・後援のいずれの関係もありません。AXIS&reg; は Axis Communications AB の商標です。価格は MSRP（定価）であり実売価格ではありません。USD・GBP・JPY は為替換算による概算で、Axis が独自に公開した価格表ではありません。</p>
     </div>

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "4XS Toolbox",
-  "version": "5.0",
+  "version": "5.2",
   "description": "Chipset info, MSRP (upload your price list), FOV selector, IP Utility for Axis cameras. By Pavel Kotyza — not affiliated with Axis.",
   "homepage_url": "https://4xs.dev",
   "icons": {

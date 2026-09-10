@@ -1345,6 +1345,114 @@
       a.appendChild(label);
       catRowEl.appendChild(a);
     });
+    syncCatPickBtn();
+  }
+
+  // ---------------------------------------------------------------------
+  // Category picker ("+" at the end of the quick-link row).
+  //
+  // Until now the only way to fill the category row was to heart a tile on
+  // axis.com/products; this is the same list, editable from the popup. Same
+  // CATEGORIES_KEY and same array shape, so the two writers are
+  // interchangeable and chrome.storage.onChanged keeps both in sync.
+  //
+  // The panel reuses .filter-pop's fixed positioning: opening it must not
+  // change the popup's height, which only ever has the two values the
+  // .axis-has-categories rule allows.
+  // ---------------------------------------------------------------------
+  const catPickBtn = document.getElementById("catPickBtn");
+  const catPickPop = document.getElementById("catPickPop");
+  let catPickOpen = false;
+
+  function syncCatPickBtn() {
+    if (!catPickBtn) return;
+    const title = t("catPickEdit", "Choose category shortcuts");
+    catPickBtn.title = title;
+    catPickBtn.setAttribute("aria-label", title);
+  }
+
+  function buildCatPickPop() {
+    catPickPop.innerHTML = "";
+    const head = document.createElement("div");
+    head.className = "filter-sec";
+    head.textContent = t("catPickHeading", "Shortcuts");
+    catPickPop.appendChild(head);
+
+    const chosen = favoriteCategories.filter((sl) => CATEGORY_LABELS[sl]);
+    const full = chosen.length >= MAX_FAVORITE_CATEGORIES;
+
+    Object.keys(CATEGORY_LABELS)
+      .sort((a, b) => CATEGORY_LABELS[a].localeCompare(CATEGORY_LABELS[b]))
+      .forEach((slug) => {
+        const row = document.createElement("label");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = chosen.indexOf(slug) >= 0;
+        // The cap is enforced here, at the writer, exactly as it is on
+        // axis.com/products - four fit on one line and a fifth would
+        // squeeze every label to an ellipsis.
+        cb.disabled = full && !cb.checked;
+        if (cb.disabled) row.className = "disabled";
+        cb.addEventListener("change", () => {
+          const i = favoriteCategories.indexOf(slug);
+          if (cb.checked && i < 0) favoriteCategories.push(slug);
+          else if (!cb.checked && i >= 0) favoriteCategories.splice(i, 1);
+          favoriteCategories = favoriteCategories.slice(0, MAX_FAVORITE_CATEGORIES);
+          chrome.storage.local.set({ [CATEGORIES_KEY]: favoriteCategories.slice() });
+          renderCategoryRow();
+          buildCatPickPop();
+        });
+        const span = document.createElement("span");
+        span.textContent = CATEGORY_LABELS[slug];
+        row.appendChild(cb);
+        row.appendChild(span);
+        catPickPop.appendChild(row);
+      });
+
+    const note = document.createElement("div");
+    note.className = "cat-pick-note";
+    note.textContent = t("catPickNote", "Up to 4 fit in one row.");
+    catPickPop.appendChild(note);
+  }
+
+  function positionCatPickPop() {
+    const r = catPickBtn.getBoundingClientRect();
+    catPickPop.style.top = "0px";
+    catPickPop.style.left = "0px";
+    const h = catPickPop.offsetHeight;
+    const w = catPickPop.offsetWidth;
+    let top = r.bottom + 4;
+    if (top + h > window.innerHeight - 6) top = Math.max(6, r.top - h - 4);
+    let left = r.right - w;
+    if (left < 6) left = 6;
+    catPickPop.style.top = top + "px";
+    catPickPop.style.left = left + "px";
+  }
+
+  function closeCatPickPop() {
+    if (!catPickPop) return;
+    catPickPop.hidden = true;
+    catPickOpen = false;
+    if (catPickBtn) catPickBtn.setAttribute("aria-expanded", "false");
+  }
+
+  if (catPickBtn && catPickPop) {
+    catPickBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (catPickOpen) return closeCatPickPop();
+      buildCatPickPop();
+      catPickPop.hidden = false;
+      catPickOpen = true;
+      catPickBtn.setAttribute("aria-expanded", "true");
+      positionCatPickPop();
+    });
+    catPickPop.addEventListener("click", (e) => e.stopPropagation());
+    document.addEventListener("click", () => {
+      if (catPickOpen) closeCatPickPop();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && catPickOpen) closeCatPickPop();
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -1837,6 +1945,7 @@
         // after a scan that it's worth keeping in sync).
         favoriteCategories = Array.isArray(changes[CATEGORIES_KEY].newValue) ? changes[CATEGORIES_KEY].newValue : [];
         renderCategoryRow();
+        if (catPickOpen) buildCatPickPop();
       }
       if (changes[FAVORITES_KEY]) {
         // Picks up favorites toggled on the live Product Selector page (or

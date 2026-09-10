@@ -26,10 +26,22 @@
 (function () {
   "use strict";
 
-  const STYLES = {
-    light: "https://tiles.openfreemap.org/styles/positron",
-    dark: "https://tiles.openfreemap.org/styles/dark",
+  // Two basemap looks, each with a light/dark variant:
+  //   "color" - Liberty, the full-colour OSM look (default; landmarks, parks,
+  //             water and road classes are all colour-coded, which is what you
+  //             want when you're judging what a camera actually looks at)
+  //   "gray"  - Positron, the muted grey look (less visual competition with
+  //             the yellow cone; this used to be the only option)
+  // OpenFreeMap ships no dark *colour* style, so dark theme uses Positron-dark
+  // for both - the switch is a no-op there, by design rather than by accident.
+  const url = (name) => "https://tiles.openfreemap.org/styles/" + name;
+  const BASEMAPS = {
+    color: { light: url("liberty"), dark: url("dark") },
+    gray: { light: url("positron"), dark: url("dark") },
   };
+  // Back-compat: STYLES was the old light/dark pair. Now it points at the
+  // default (colour) basemap.
+  const STYLES = BASEMAPS.color;
   const ATTRIBUTION =
     '<a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> ' +
     '&copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> ' +
@@ -69,18 +81,32 @@
 
     const center = opts.center || { lat: 50.0755, lng: 14.4378 }; // Prague, sensible default
     let theme = opts.theme === "dark" ? "dark" : "light";
+    let basemap = opts.basemap === "gray" ? "gray" : "color";
+    const styleUrl = () => BASEMAPS[basemap][theme];
 
     const map = new maplibregl.Map({
       container: el,
-      style: STYLES[theme],
+      style: styleUrl(),
       center: [center.lng, center.lat],
       zoom: opts.zoom == null ? 13 : opts.zoom,
       attributionControl: false,
     });
     // compact: the map box is only ~420px wide in the popup, and the full
     // attribution string overflows it. The compact control is an "i" toggle.
-    const attributionControl = new maplibregl.AttributionControl({ compact: true, customAttribution: ATTRIBUTION });
+    //
+    // No customAttribution: the OpenFreeMap styles already declare exactly
+    // this string on their own sources, so passing ours too printed the whole
+    // credit line twice. ATTRIBUTION is kept as the documented fallback for a
+    // style that doesn't carry its own.
+    const attributionControl = new maplibregl.AttributionControl({ compact: true });
     map.addControl(attributionControl);
+    // MapLibre renders a compact control *expanded* until the user first
+    // collapses it, which eats a strip of the map on every load. Collapse it
+    // to the "i" button once it exists - it still opens on click.
+    function collapseAttribution() {
+      const box = el.querySelector(".maplibregl-ctrl-attrib.maplibregl-compact-show");
+      if (box) box.classList.remove("maplibregl-compact-show");
+    }
 
     // Shapes are declared up-front and re-applied whenever the style is
     // (re)loaded, because setStyle() throws away every source and layer.
@@ -176,6 +202,11 @@
     map.on("style.load", () => {
       styleReady = true;
       applyAllShapes();
+      // The control re-expands itself whenever the attribution text changes,
+      // i.e. after every setStyle() (theme or basemap switch) as well as on
+      // first load - so collapse it here rather than once at startup.
+      collapseAttribution();
+      setTimeout(collapseAttribution, 0); // after MapLibre's own class update
     });
 
     const api = {
@@ -217,7 +248,16 @@
         if (want === theme || degraded) return api;
         theme = want;
         styleReady = false;
-        map.setStyle(STYLES[theme]); // style.load re-applies every shape
+        map.setStyle(styleUrl()); // style.load re-applies every shape
+        return api;
+      },
+      getBasemap: () => basemap,
+      setBasemap(next) {
+        const want = next === "gray" ? "gray" : "color";
+        if (want === basemap || degraded) return api;
+        basemap = want;
+        styleReady = false;
+        map.setStyle(styleUrl()); // same contract as setTheme
         return api;
       },
 
@@ -288,5 +328,5 @@
     return api;
   }
 
-  window.AxisMap = { create, STYLES };
+  window.AxisMap = { create, STYLES, BASEMAPS };
 })();

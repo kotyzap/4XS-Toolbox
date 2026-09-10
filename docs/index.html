@@ -394,7 +394,7 @@
     section { padding: 64px 20px; }
   }
 
-  /* ---------- v5.0 additions ---------- */
+  /* ---------- v5.2 additions ---------- */
   .shot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
   .shot-pair figure { margin: 0; }
   .shot-pair img { border: 1px solid var(--border); }
@@ -438,7 +438,7 @@
   .lang-hello[dir="rtl"] { text-align: right; }
   .lang-flags { max-width: 274px; }
   @media (max-width: 640px) {
-    /* The brand's second line ("Chrome & Firefox · v5.0") is long enough to
+    /* The brand's second line ("Chrome & Firefox · v5.2") is long enough to
        wrap into the nav controls on a phone - the name alone is enough there. */
     .brand-text .t2 { display: none; }
     /* Let the brand name ellipsize rather than letting a longer localized
@@ -459,7 +459,7 @@
       <span class="brand-mark">4XS</span>
       <span class="brand-text">
         <span class="t1">4XS Toolbox</span>
-        <span class="t2">Chrome &amp; Firefox · v5.0</span>
+        <span class="t2">Chrome &amp; Firefox · v5.2</span>
       </span>
     </a>
     <nav class="nav-links">
@@ -490,7 +490,7 @@
     <div class="hero-grid">
       <div class="hero-copy">
         <div class="tag-row">
-          <span class="tag tag-accent">Axis camera toolkit · v5.0</span>
+          <span class="tag tag-accent">Axis camera toolkit · v5.2</span>
           <span class="tag">Free · Chrome &amp; Firefox</span>
         </div>
         <h1><span id="hero-h1a">Find the right</span><br><span id="hero-h1b">Axis camera.</span></h1>
@@ -503,7 +503,7 @@
           <div><div class="stat-num">322</div><div class="stat-label">Models</div></div>
           <div><div class="stat-num">409</div><div class="stat-label">SKUs priced</div></div>
           <div><div class="stat-num">12</div><div class="stat-label">Languages</div></div>
-          <div><div class="stat-num">v5.0</div><div class="stat-label">Current build</div></div>
+          <div><div class="stat-num">v5.2</div><div class="stat-label">Current build</div></div>
         </div>
       </div>
       <figure class="hero-shot">
@@ -552,10 +552,21 @@
 
       <div class="feature-card">
         <figure class="feature-figure feature-figure-inset">
-          <img src="img/v5-popup-filter.png" alt="The popup with the Filter popover open: sort options for Best fit, Price low to high, Price high to low and FoV widest first, plus chipset checkboxes for ARTPEC-9, ARTPEC-8, ARTPEC-6/7, ARTPEC-3/4/5 and Ambarella, with ARTPEC-8 ticked and the results list behind narrowed to ARTPEC-8 cameras" style="width: 62%; max-width: 340px;">
+          <img src="img/v5-2-shortcuts-picker.png" alt="The 4XS Toolbox popup with the Shortcuts panel open: a checkbox list of Axis product categories with Analytics, Body worn, Cameras and Intercoms ticked, the remaining categories greyed out, and a note reading &quot;Up to 4 fit in one row&quot;" style="width: 62%; max-width: 330px;">
         </figure>
         <div class="feature-body">
           <div class="feature-kicker">FEATURE / 02</div>
+          <h3>The four categories you actually open</h3>
+          <p>Pick your Axis product categories from the popup itself — <strong>+</strong> at the end of the quick-link row — or keep hearting tiles on axis.com; both write the same four shortcuts and stay in sync. Four is the cap, the same one axis.com uses, so the labels never squeeze to an ellipsis.</p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <figure class="feature-figure feature-figure-inset">
+          <img src="img/v5-popup-filter.png" alt="The popup with the Filter popover open: sort options for Best fit, Price low to high, Price high to low and FoV widest first, plus chipset checkboxes for ARTPEC-9, ARTPEC-8, ARTPEC-6/7, ARTPEC-3/4/5 and Ambarella, with ARTPEC-8 ticked and the results list behind narrowed to ARTPEC-8 cameras" style="width: 62%; max-width: 340px;">
+        </figure>
+        <div class="feature-body">
+          <div class="feature-kicker">FEATURE / 03</div>
           <h3>Filter by chipset, sort by price or lens</h3>
           <p>Narrow to the ARTPEC or Ambarella generation your analytics need, then sort by <strong>price</strong> or by <strong>widest field of view</strong>. Favourites stay pinned on top whichever order you choose, and the filter applies to both the catalogue and the map results at once.</p>
         </div>
@@ -566,7 +577,7 @@
           <img src="img/inline-badges-overview.png" alt="Axis Product Selector showing M32, M42 and M43 series cards, every one carrying an ARTPEC-8 chipset badge and a yellow price badge">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 03</div>
+          <div class="feature-kicker">FEATURE / 04</div>
           <h3>Badges on axis.com itself</h3>
           <p>Every recognised product tile gets a price badge — hover for the Axis part number — plus a chipset label where CamStreamer has data, with a checkmark when CamStreamer ACAPs are supported. On the Product Selector, search results, product and category pages, and inside the <strong>Compare Products</strong> table.</p>
         </div>
@@ -577,7 +588,7 @@
           <img src="img/v5-selector-panel.png" alt="The Filters panel injected into the Axis Product Selector: a FoV Map button, quick links to Products, My Axis, IP Scanner and MSRP list, pinned category buttons, a sort-by-cheapest checkbox, a Required angle slider, an ACAP dropdown set to CamStreamer, and chipset checkboxes" style="width: 62%; max-width: 250px;">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 04</div>
+          <div class="feature-kicker">FEATURE / 05</div>
           <h3>A filter panel the Product Selector never had</h3>
           <p>Multi-select chipset filtering, a required-angle slider, an ACAP dropdown that narrows to what CamStreamer supports, and cheapest-first series sorting — all applied live to the page, with your pinned categories and tools one click away at the top.</p>
         </div>
@@ -588,7 +599,7 @@
           <img src="img/v5-click-to-copy.png" alt="A catalogue row for AXIS Q1728-LE — 48 mm with the part number 03211-001 underlined, and a tooltip reading &quot;Click to copy 03211-001&quot;" style="width: 74%; max-width: 300px;">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 05</div>
+          <div class="feature-kicker">FEATURE / 06</div>
           <h3>Click to copy, exactly what you clicked</h3>
           <p>Part number into the quote, model name into the email, category into the spec — click the field you want and it is on the clipboard, with a checkmark to confirm. Multipack SKUs drop their <code>(10 pcs)</code> suffix so what you paste is the number Axis actually orders against.</p>
         </div>
@@ -599,7 +610,7 @@
           <img class="lang-flags" src="img/v5-languages.png" alt="The popup&rsquo;s language row: twelve flags — English, Czech, Japanese, Spanish, German, French, Korean, Chinese, Swedish, Ukrainian, Arabic and Dutch — with English currently selected" style="width: 78%; max-width: 274px;">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 06</div>
+          <div class="feature-kicker">FEATURE / 07</div>
           <h3>Speaks your language</h3>
           <div class="lang-hello" id="lang-hello" hidden>
             <p class="hello-line" id="lang-hello-line"></p>
@@ -614,7 +625,7 @@
           <img src="img/v5-scanner-crop.png" alt="The IP Utility Scanner mid-scan: the subnet field set to 192.168.1 with a Stop button, a status line reading &quot;Scanning… 166/254 (3 found)&quot;, and two discovered cameras — a Q1656 Box Camera at 192.168.1.156 on ARTPEC-8 and an M1137 Network Camera at 192.168.1.185 on ARTPEC-6/7 — each with its serial number and firmware version" style="width: 88%; max-width: 380px;">
         </figure>
         <div class="feature-body">
-          <div class="feature-kicker">FEATURE / 07</div>
+          <div class="feature-kicker">FEATURE / 08</div>
           <h3>An IP Utility for Mac and Linux, finally</h3>
           <p>Axis only ever shipped <strong>AXIS IP Utility for Windows</strong>. Every Mac and Linux integrator has been stuck borrowing a laptop, running a VM, or guessing addresses.</p>
           <p>This is the same job done in the browser, so it runs <strong>anywhere Chrome or Firefox does</strong> — macOS, Windows, Linux, ChromeOS. Type the subnet, press Scan, and watch devices appear as they answer: model, IP, serial, firmware and chipset, straight from the cameras over VAPIX, with no install and nothing leaving the machine.</p>
@@ -762,7 +773,7 @@
     <div class="footer-brand">
       <div class="footer-brand-row">
         <span class="footer-mark">4XS</span>
-        <span class="name">4XS Toolbox v5.0</span>
+        <span class="name">4XS Toolbox v5.2</span>
       </div>
       <p>By Pavel Kotyza · <a href="https://4xs.dev" target="_blank" rel="noopener" style="font-weight:600">4xs.dev</a>. Personal project — not affiliated with, endorsed by, or sponsored by Axis Communications AB. AXIS&reg; is a trademark of Axis Communications AB. Prices are MSRP list prices, not street prices. USD, GBP and JPY figures are FX-derived estimates, not independently published Axis price lists.</p>
     </div>

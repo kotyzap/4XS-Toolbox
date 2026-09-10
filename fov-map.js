@@ -40,6 +40,10 @@
     specChipset: "チップセット",
     openProductPageTitle: "axis.comでこのモデルのページを開く",
     copySkuTitle: "クリックで型番をコピー",
+    basemapToGray: "グレー地図",
+    basemapToColour: "カラー地図",
+    basemapToggleTitle: "カラー地図とグレー地図を切り替え",
+    favToggleTitle: "お気に入りに追加 — お気に入りは先頭に表示されます",
     copied: "コピーしました",
     copyFailed: "Ctrl+Cを押してください",
     csSupported: "✅ CamStreamer対応",
@@ -74,8 +78,14 @@
   // Theme (mirrors popup.js's light/dark toggle, persisted separately)
   // ---------------------------------------------------------------------
   const THEME_KEY = "axisFovMapTheme";
+  // `var`, not `let`: applyTheme() runs from a storage callback that can fire
+  // before the map is constructed further down, and a `let`/`const` declared
+  // later would throw on access (temporal dead zone) instead of reading null.
+  var mapApi = null;
   function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
+    const next = theme === "dark" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    if (mapApi) mapApi.setTheme(next); // the basemap follows the page theme
   }
   chrome.storage?.local.get([THEME_KEY], (r) => applyTheme(r[THEME_KEY] || "light"));
   document.getElementById("themeToggle").addEventListener("click", () => {
@@ -84,6 +94,34 @@
     applyTheme(next);
     chrome.storage?.local.set({ [THEME_KEY]: next });
   });
+
+  // ---------------------------------------------------------------------
+  // Basemap look: colour (Liberty) or grey (Positron). Colour is the default
+  // - the grey basemap reads as "disabled" to a lot of people, and colour is
+  // more useful when you're judging what a camera actually overlooks. The
+  // choice persists, and is separate from the light/dark theme.
+  // ---------------------------------------------------------------------
+  const BASEMAP_KEY = "axisFovMapBasemap";
+  var basemapMode = "color";
+  const basemapToggle = document.getElementById("basemapToggle");
+  const basemapLabelEl = document.getElementById("basemapToggleLabel");
+  function applyBasemapLabel() {
+    // The button says what you'd switch TO, like every other toggle here.
+    basemapLabelEl.textContent =
+      basemapMode === "color"
+        ? t("basemapToGray", "Grey map")
+        : t("basemapToColour", "Colour map");
+  }
+  function applyBasemap(mode, persist) {
+    basemapMode = mode === "gray" ? "gray" : "color";
+    if (mapApi) mapApi.setBasemap(basemapMode);
+    applyBasemapLabel();
+    if (persist) chrome.storage?.local.set({ [BASEMAP_KEY]: basemapMode });
+  }
+  chrome.storage?.local.get([BASEMAP_KEY], (r) => applyBasemap(r[BASEMAP_KEY] || "color", false));
+  basemapToggle.addEventListener("click", () =>
+    applyBasemap(basemapMode === "color" ? "gray" : "color", true)
+  );
 
   // ---------------------------------------------------------------------
   // Currency (mirrors popup.js/content.js: axisCurrency + fxRates in
@@ -272,7 +310,28 @@
     return null;
   }
 
-  chrome.storage?.local.get(["axisCurrency", "fxRates"], (r) => {
+  // ---------------------------------------------------------------------
+  // Favorites - the same "♡ -> 🧡" per-model marker the popup and the
+  // Product Selector's Filters panel use, sharing the one
+  // chrome.storage.local key ("axisFavorites", normalizeBare(model) keys), so
+  // a camera hearted here is hearted everywhere and vice versa. Favorited
+  // models pin to the front of the results stripe.
+  // ---------------------------------------------------------------------
+  const FAVORITES_KEY = "axisFavorites";
+  let favorites = new Set();
+  const isFav = (model) => favorites.has(normalizeBare(model));
+  function toggleFav(model) {
+    const key = normalizeBare(model);
+    if (favorites.has(key)) favorites.delete(key);
+    else favorites.add(key);
+    // The storage write echoes back through onChanged below, but that fires
+    // asynchronously - re-render now so the heart flips on the click.
+    chrome.storage?.local.set({ [FAVORITES_KEY]: Array.from(favorites) });
+    if (manualAngle != null) runMatch();
+  }
+
+  chrome.storage?.local.get(["axisCurrency", "fxRates", FAVORITES_KEY], (r) => {
+    if (Array.isArray(r[FAVORITES_KEY])) favorites = new Set(r[FAVORITES_KEY]);
     if (
       r.axisCurrency === "USD" || r.axisCurrency === "EUR" ||
       r.axisCurrency === "JPY" || r.axisCurrency === "OFF"
@@ -295,6 +354,14 @@
     }
     if (changes.fxRates) {
       fxRates = changes.fxRates.newValue;
+      changed = true;
+    }
+    // Picks up hearts toggled in the popup or on the live Product Selector
+    // page while this tab stays open.
+    if (changes[FAVORITES_KEY]) {
+      favorites = new Set(
+        Array.isArray(changes[FAVORITES_KEY].newValue) ? changes[FAVORITES_KEY].newValue : []
+      );
       changed = true;
     }
     if (changed && manualAngle != null) runMatch();
@@ -456,7 +523,16 @@
   const map = AxisMap.create("map", {
     center: { lat: 50.0755, lng: 14.4378 }, // Prague, sensible default
     zoom: 13,
+    theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
+    basemap: basemapMode,
   });
+  // Hand the map to the theme/basemap toggles above, and re-apply whatever
+  // the storage callbacks resolved to while the map was still being built.
+  mapApi = map;
+  if (map) {
+    map.setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light");
+    map.setBasemap(basemapMode);
+  }
 
   const STEP = { CAMERA: 0, EDGE1: 1, EDGE2: 2, DONE: 3 };
   let step = STEP.CAMERA;
@@ -525,6 +601,12 @@
   }
 
   resultsTrack.addEventListener("click", async (ev) => {
+    const heart = ev.target.closest(".card-fav");
+    if (heart) {
+      ev.preventDefault();
+      toggleFav(heart.dataset.favModel);
+      return;
+    }
     const btn = ev.target.closest(".sku-badge");
     if (!btn) return;
     ev.preventDefault();
@@ -629,6 +711,8 @@
   function applyStaticI18nLabels() {
     document.getElementById("pageHeadingText").textContent = t("pageHeading", "AXIS FOV Map Camera Selector");
     document.getElementById("themeToggle").title = t("themeToggleTitle", "Toggle light/dark theme");
+    basemapToggle.title = t("basemapToggleTitle", "Switch between the colour and grey basemap");
+    applyBasemapLabel();
     panelToggle.title = t("panelToggleTitle", "Show/hide settings");
     document.getElementById("stepHeading").textContent = t("stepHeading", "1. Place the camera & draw the cone");
     resetBtn.textContent = t("resetBtn", "Reset");
@@ -938,6 +1022,11 @@
     const excessOf = (r) => Math.max(0, r.fov.max - angle);
     const sortMode = sortSelect.value; // "fit" | "price"
     matches.sort((a, b) => {
+      // Favorites pin to the front in every sort mode - they're the shortlist
+      // you're speccing from, same rule as the popup's list.
+      const favA = isFav(a.modelKey) ? 0 : 1;
+      const favB = isFav(b.modelKey) ? 0 : 1;
+      if (favA !== favB) return favA - favB;
       if (sortMode === "price") {
         const priceDiff = priceOf(a) - priceOf(b);
         if (priceDiff !== 0) return priceDiff;
@@ -978,7 +1067,9 @@
     // surfaces read as one tool.
     for (const r of matches.slice(0, 60)) {
       const card = document.createElement("div");
-      card.className = "result-card" + (r.camstreamerSupported ? " cs-supported" : "");
+      const fav = isFav(r.modelKey);
+      card.className =
+        "result-card" + (r.camstreamerSupported ? " cs-supported" : "") + (fav ? " favorited" : "");
       const price = fmtPrice(r.entry);
       // ARTPEC-6/7/8/9 are merged into one "CamStreamer supported" badge here
       // rather than calling out which specific generation, since for this
@@ -1025,6 +1116,11 @@
         ? ` title="${escAttr(t("openProductPageTitle", "Open this model's page on axis.com"))}"`
         : "";
       card.innerHTML = `
+        <button type="button" class="card-fav" data-fav-model="${escAttr(r.modelKey)}"
+          aria-pressed="${fav ? "true" : "false"}"
+          title="${escAttr(t("favToggleTitle", "Favorite this camera — favorites sort to the front"))}">${
+        fav ? "🧡" : "♡"
+      }</button>
         <div class="card-thumb" data-model="${escAttr(r.modelKey)}"></div>
         <div class="axis-badges">
           ${r.chipset ? `<span class="axis-chipset-pill">${r.chipset}${r.camstreamerSupported ? " ✅" : ""}</span>` : ""}

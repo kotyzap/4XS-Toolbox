@@ -315,10 +315,39 @@
   /* Quick links to axis.com, above the tab bar. Same tinted-panel look as
      the tabs but single-line and about half their height. */
   .link-row {
-    display: flex;
+    /* Three equal outbound links plus the square category picker, which is
+       sized to the row height rather than sharing a column - same shape as
+       the row on toolbox.4xs.dev. */
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) 26px;
     gap: 8px;
     margin: 10px 14px 0;
+    align-items: stretch;
   }
+  /* Square "+" that opens the category picker. Dashed, so it reads as an
+     affordance rather than a fourth link. */
+  .cat-pick-btn {
+    width: 26px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--accent-strong);
+    background: rgba(255, 204, 51, 0.12);
+    color: var(--text);
+    border-radius: 6px;
+    font: 700 16px/1 Arial, sans-serif;
+    cursor: pointer;
+  }
+  .cat-pick-btn:hover { background: rgba(255, 204, 51, 0.3); }
+  /* Reuses .filter-pop (fixed, above everything) so opening it never changes
+     the popup's height - the two-heights rule below still holds. */
+  .cat-pick-pop .cat-pick-note {
+    font-size: 10.5px;
+    color: var(--muted);
+    margin: 4px 2px 0;
+  }
+  .cat-pick-pop label.disabled { opacity: 0.45; cursor: default; }
   .link-row a {
     flex: 1 1 0;
     min-width: 0;
@@ -916,6 +945,7 @@ html[data-theme="dark"] .axis-map-nobasemap-note {
     <a href="https://www.axis.com/support/tools/product-selector" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h12M20 17h0"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="18" cy="17" r="2"/></svg><span>Selector</span></a>
     <a href="https://www.axis.com/products" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>Products</span></a>
     <a href="https://my.axis.com/" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/></svg><span>My Axis</span></a>
+    <button type="button" id="catPickBtn" class="cat-pick-btn" aria-expanded="false" title="Choose category shortcuts" aria-label="Choose category shortcuts">+</button>
   </div>
   <!-- Category quick links, filled by popup.js from axisFavoriteCategories
        (hearted on axis.com/products). Hidden entirely when empty. -->
@@ -978,6 +1008,7 @@ html[data-theme="dark"] .axis-map-nobasemap-note {
   </div>
   <!-- Shared by both filter buttons; built and positioned by popup.js. -->
   <div class="filter-pop" id="filterPop" hidden></div>
+  <div class="filter-pop cat-pick-pop" id="catPickPop" hidden></div>
   <link rel="stylesheet" href="vendor/maplibre-gl.css">
   <link rel="stylesheet" href="find-cams.css">
   <script src="i18n.js"></script>
