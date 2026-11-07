@@ -1,6 +1,38 @@
-# 4XS Toolbox
+<a href="https://kotyzap.github.io/4XS-Toolbox/">
+  <img src="promo/tile-marquee-1400x560.png" alt="4XS Toolbox for Axis cameras — chipset, AXIS OS 13 readiness, DLPU/MLPU and list price, badged straight onto axis.com" width="100%">
+</a>
 
-**v6.0** · [Chrome Web Store](https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl) · [4xs.dev](https://4xs.dev) · [toolbox.4xs.dev](https://toolbox.4xs.dev)
+<p align="center">
+  <a href="https://github.com/kotyzap/4XS-Toolbox/releases/latest"><img src="https://img.shields.io/badge/version-6.0-1A1A1A?style=flat-square" alt="Version 6.0"></a>
+  <a href="https://chromewebstore.google.com/detail/4xs-toolbox/gnegcekipfaapeboifcejnjmfemfigpl"><img src="https://img.shields.io/badge/Chrome-Web%20Store-1A1A1A?style=flat-square&logo=googlechrome&logoColor=FFCC33" alt="On the Chrome Web Store"></a>
+  <img src="https://img.shields.io/badge/manifest-V3-1A1A1A?style=flat-square" alt="Chrome extension, Manifest V3">
+  <img src="https://img.shields.io/badge/catalogue-341%20models%20%C2%B7%20432%20SKUs-FFCC33?style=flat-square&labelColor=1A1A1A" alt="341 models and 432 SKUs in the bundled catalogue">
+  <img src="https://img.shields.io/badge/AXIS%20OS%2013-readiness%20per%20model-FFCC33?style=flat-square&labelColor=1A1A1A" alt="AXIS OS 13 readiness resolved per model">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/kotyzap/4XS-Toolbox?style=flat-square&color=1A1A1A" alt="MIT licence"></a>
+  <img src="https://img.shields.io/github/last-commit/kotyzap/4XS-Toolbox?style=flat-square&color=1A1A1A" alt="Last commit">
+</p>
+
+<p align="center">
+  <b>What chipset, will it get AXIS OS 13, can it run deep learning, what does it list for.</b><br>
+  Four badges, answered in place on axis.com — no second tab, no spreadsheet.
+</p>
+
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/4xs-toolbox/gnegcekipfaapeboifcejnjmfemfigpl"><b>⬇ Install</b></a> ·
+  <a href="https://kotyzap.github.io/4XS-Toolbox/">Website</a> ·
+  <a href="https://toolbox.4xs.dev">Web version</a> ·
+  <a href="https://kotyzap.github.io/4XS-Toolbox/workflow-visualizer/">How it works</a> ·
+  <a href="#what-it-shows-and-where">What it shows</a> ·
+  <a href="#fov-map-camera-selector">FoV map</a> ·
+  <a href="#find-cams">Find Cams</a> ·
+  <a href="https://kotyzap.github.io/4XS-Toolbox/index.ja.html">日本語</a>
+</p>
+
+<p align="center">
+  <a href='https://ko-fi.com/pavelk' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+</p>
+
+<br>
 
 A browser toolbox for anyone who works with Axis cameras day to day. It answers the four questions you actually ask about a camera — **what chipset, will it get AXIS OS 13, can it run deep learning, what does it list for** — and answers them in place, on axis.com, without a second tab. On top of that sit a field-of-view camera selector and a Find Cams tool that scans your local network for Axis devices and shows model, serial number and firmware without a password.
 
@@ -129,7 +161,7 @@ Chipset labels are sourced from CamStreamer's published camera-compatibility lis
 
 ## Installing
 
-**From the Chrome Web Store** — [4XS Toolbox](https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl). This is the easy path and it auto-updates.
+**From the Chrome Web Store** — [4XS Toolbox](https://chromewebstore.google.com/detail/4xs-toolbox/gnegcekipfaapeboifcejnjmfemfigpl). This is the easy path and it auto-updates.
 
 **From source**, as an unpacked extension:
 
