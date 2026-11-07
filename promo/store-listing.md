@@ -177,5 +177,12 @@ real unpacked build — no mockups.
 - [ ] `manifest.json` description ≤ 132 chars (dashboard rejects longer) — currently 128.
 - [ ] Version bumped — currently `6.0`.
 - [ ] Store name changed from "Axis MSRP Price Overlay" to "4XS Toolbox".
-- [ ] Zip excludes `.git`, `docs/`, `promo/`, `test/`, `*.zip`, `*.pdf`.
+- [ ] Package built with `python3 build-chrome.py` → `dist/4xs-toolbox-6.0.zip`
+      (34 files, 947 KB). The file list is derived from the manifest and the
+      pages it reaches, so `docs/`, `promo/`, `test/`, `_archive/`, the build
+      scripts, loose PDFs and `prices.csv` are excluded by construction rather
+      than by a glob that can rot.
+- [ ] Firefox/AMO package: `python3 build-firefox.py` →
+      `dist/4xs-toolbox-firefox-6.0.zip`. Separate AMO listing, gecko id
+      `4xs-toolbox@4xs.dev`, min Firefox 128.
 - [ ] Single-purpose statement still accurate.

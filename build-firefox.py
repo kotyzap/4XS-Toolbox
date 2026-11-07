@@ -63,6 +63,8 @@ VERBATIM = [
     "i18n.js",
     "catalog-data.js",
     "chipset-data.js",
+    "os13-data.js",
+    "compute-data.js",
     "fov-data.js",
     "axis-map.js",
     "content.js",
