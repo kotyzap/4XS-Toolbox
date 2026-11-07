@@ -185,4 +185,25 @@ real unpacked build — no mockups.
 - [ ] Firefox/AMO package: `python3 build-firefox.py` →
       `dist/4xs-toolbox-firefox-6.0.zip`. Separate AMO listing, gecko id
       `4xs-toolbox@4xs.dev`, min Firefox 128.
+
+## AMO validation (v6.0)
+
+`web-ext lint --self-hosted` on `dist/4xs-toolbox-firefox-6.0.zip`:
+**0 errors, 0 notices, 19 warnings.** Nothing blocking.
+
+- **17 × `UNSAFE_VAR_ASSIGNMENT`** — `innerHTML`. Expected: every value
+  assigned comes from the bundled data files or the user's own uploaded price
+  list, never from a remote response. A human reviewer may still ask; the
+  honest answer is the one in this paragraph.
+- **2 × `KEY_FIREFOX*_UNSUPPORTED_BY_MIN_VERSION`** —
+  `browser_specific_settings.gecko.data_collection_permissions` landed in
+  Firefox 140 / Android 142, and `strict_min_version` is 128. Accepted
+  deliberately: AMO *requires* the key on new extensions, and older Firefox
+  ignores unknown manifest keys, so it is inert rather than broken. Raising the
+  minimum to 140 to silence the warning would drop 128–139 for no functional
+  gain.
+
+**Not verified:** the Firefox build has never been *run* in Firefox — the
+container has no Firefox binary. Do a `web-ext run` locally before submitting,
+and check the popup, a badged axis.com page and one scan.
 - [ ] Single-purpose statement still accurate.
