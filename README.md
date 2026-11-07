@@ -1,12 +1,16 @@
 # 4XS Toolbox
 
-A browser toolbox for anyone who works with Axis cameras day to day: MSRP list prices and chipset/hardware-generation info directly on axis.com (Product Selector, search results, every product and category page), a field-of-view camera selector, and a Find Cams tool that scans your local network for Axis devices and shows model, serial number and firmware without a password.
+**v6.0** · [Chrome Web Store](https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl) · [4xs.dev](https://4xs.dev) · [toolbox.4xs.dev](https://toolbox.4xs.dev)
+
+A browser toolbox for anyone who works with Axis cameras day to day. It answers the four questions you actually ask about a camera — **what chipset, will it get AXIS OS 13, can it run deep learning, what does it list for** — and answers them in place, on axis.com, without a second tab. On top of that sit a field-of-view camera selector and a Find Cams tool that scans your local network for Axis devices and shows model, serial number and firmware without a password.
+
+![Badges on an axis.com product page](docs/img/v6-axis-product.png)
 
 Built for sales and channel teams, marketing, Axis resellers and partners, and Axis employees. (Not affiliated with or endorsed by Axis Communications — an independent tool built for people who work with their cameras.)
 
 ## What it shows, and where
 
-- **Product Selector** (axis.com/support/tools/product-selector) — every camera tile gets a price badge and, where known, a chipset label. A floating chipset filter panel lets you narrow the whole page down to specific chipset generations (e.g. only cameras with CamStreamer app support), and series can be sorted cheapest-first.
+- **Product Selector** (axis.com/support/tools/product-selector) — every camera tile gets a price badge and, where known, chipset, AXIS OS 13 and compute labels. A floating chipset filter panel lets you narrow the whole page down to specific chipset generations (e.g. only cameras with CamStreamer app support), and series can be sorted cheapest-first.
 - **Product Selector comparison page** (axis.com/support/tools/product-selector/comparison/) — when you compare products from the Product Selector, Chipset and Price rows are added right at the top of the comparison, above every other spec.
 - **axis.com search results** — searching for a model (e.g. `M1137`) or a whole series (e.g. `Q35`) appends a price badge to each matching result title, plus a chipset badge when the result names one specific model.
 - **Product and category pages** (axis.com/products/...):
@@ -14,11 +18,46 @@ Built for sales and channel teams, marketing, Axis resellers and partners, and A
   - The series page breadcrumb trail shows the full price range and every chipset used across that series in one place.
   - Individual product pages get the same price + chipset badges next to the product name.
   - The "Compare products" table on a series page gets two new rows at the top — **Chipset** and **Price** — one column per model, so you can compare cost and hardware generation right alongside every other spec.
-- **Toolbar popup** — three tabs: **Chipset & MSRP** (look up any model name or Axis part number, price and chipset side by side, ♡ to pin favorites to the top), **FoV Map Tool** (a mini map with the matching cameras listed right underneath — see below) and **IP Utility Scanner** (Find Cams). Header buttons are icon-only and the list columns are fixed-width, so prices, chipset pills and hearts line up in one column regardless of digit count or currency. Under the tab row sit the quick links (Products, My Axis, tools) and the category shortcut row described below.
+- **Toolbar popup** — three tabs, and nothing else competing for the space. As of v6.0 the currency switcher, FX rates, language flags, chipset-update button, pricelist upload and the price disclaimer have all moved out of the popup into a proper Settings page (**⚙** in the popup header); what's left is the tab row, the quick links, the search box and the results. The three tabs: **Chipset & MSRP** (look up any model name or Axis part number, price and chipset side by side, ♡ to pin favorites to the top), **FoV Map Tool** (a mini map with the matching cameras listed right underneath — see below) and **IP Utility Scanner** (Find Cams). Header buttons are icon-only and the list columns are fixed-width, so prices, chipset pills and hearts line up in one column regardless of digit count or currency. Under the tab row sit the quick links (Products, My Axis, tools) and the category shortcut row described below.
 - **Category shortcuts** — a row of up to four Axis product-category links sits under the popup's quick-link row (Analytics, Body worn, Cameras, Intercoms and so on), each opening that category on axis.com. Fill it either way round: heart a category tile on axis.com/products, or click the **+** at the end of the quick-link row and tick categories in the **Shortcuts** panel. Both write the same list, so the two stay in sync live (`chrome.storage.onChanged`). Four is the cap — the same limit axis.com itself uses, because a fifth label squeezes every chip to an ellipsis — so once four are ticked the remaining boxes grey out until you untick one. The panel is positioned like the filter popover, which means opening it never changes the popup's height.
 - **Click to copy** — in the popup list every text field copies its own value: click the model name, the Product Number or the camera type and it goes to the clipboard with a brief ✓. Multipack part numbers (`02858-021 (10 pcs)`) copy the bare, pasteable SKU. Find Cams results copy the same way (model, serial number, firmware). Only the ♡ toggles a favorite; the rest of the row is no longer a click target.
 
+### The four badges
+
+| Badge | Means | Source |
+|---|---|---|
+| `ARTPEC-9 ✅` | Chipset / hardware generation. ✅ marks a CamStreamer App-supported generation. | CamStreamer's published compatibility list (`chipset-data.js`) |
+| `OS13 ✅` / `OS13 ✖` | Whether this model is on track for **AXIS OS 13**. | `os13-data.js` — see below |
+| `DLPU` / `MLPU` / `NO DLPU` | On-camera compute unit: deep learning, machine learning, or neither. | Axis's own Product selector feed (`compute-data.js`) |
+| `$1,369` | Axis MSRP list price in your chosen currency. | bundled AXIS Price List, or your own upload |
+
+Each of the four can be switched off independently in **Settings → Badges on axis.com**.
+
 Chipset badges are grouped for readability: older ARTPEC generations collapse into "ARTPEC 3-5," CamStreamer-supported generations collapse into "ARTPEC 6-9" (marked with a ✅), and Ambarella variants are shown as "AMB" plus the model code (e.g. "AMB A5S").
+
+![Product selector, badged](docs/img/v6-axis-selector.png)
+
+### AXIS OS 13 readiness
+
+AXIS OS 13 is where Axis resolves the Y2038 problem, and not every product makes the jump. `os13-data.js` carries a per-model verdict — `os13`, `no-os13` or `unknown` — resolved in this order, from Axis's own published guidance:
+
+- **ARTPEC-6 → no.** Axis states plainly that AXIS OS 13 won't support ARTPEC-6 products; they stay on the OS 12 track.
+- **On Axis's published 32-bit "will get AXIS OS 13" list → yes.**
+- **A 13.x build already on the product's page → yes** (observed, not inferred).
+- **Known 32-bit, newest build is 12.x, absent from that list → `unknown`.** Sources disagree, so the badge says nothing rather than guessing. `background.js` promotes it to yes on its own once a 13.x build actually ships.
+- **Newest build ≤ 11.x → no** (never moved onto the 12 track).
+- **Otherwise (64-bit) → yes.** Axis: 64-bit products aren't affected by the Y2038 ABI break and both tracks receive AXIS OS 13.
+
+The badge also carries the support-until year where Axis publishes one. A **Update** button in Settings re-reads the AXIS OS support pages (82 of them) and refreshes the verdicts without waiting for a new extension version; if fewer than all of them parse, the previous data is kept rather than half-replaced.
+
+### Compute capability — DLPU / MLPU
+
+`compute-data.js` is built primarily from Axis's own Product selector feed (`properties.analyticsComputeCapability`) — a structured per-model value straight from Axis, covering every ACTIVE product, and exactly what the Product selector itself renders as "Compute capabilities."
+
+It replaced the quarterly comparison table as the primary source because that table prints `-` in the Compute capabilities row both for MLPU devices *and* for devices with no compute unit at all. Two cautions carried over from that lesson are encoded in the data file:
+
+1. **A missing field is not proof of "no compute unit."** AXIS P3945-R (CV75) and AXIS Q8752-E Mk II (ARTPEC-7) are absent from the feed and carry a DLPU, confirmed by their own datasheets and by two comparison tables. Where feed and table disagree, the datasheet decides.
+2. **Chipset generation is never a shortcut.** ARTPEC-7 alone spans DLPU, MLPU and no-compute models.
 
 ## FOV Map Camera Selector
 
@@ -43,7 +82,7 @@ Note that `Q6300-E` and `Q6020-E` sit in the pan/tilt/zoom section of the price 
 
 FOV data for the pan/tilt/zoom range is now complete (23/23 catalog entries, up from 10/23). Previously the 13 missing models passed the FOV filter unconditionally, since the filter fails open — they appeared as matches with no FOV basis at all.
 
-Once the cone is drawn, drag the camera pin or either yellow edge handle directly on the map to reshape it — the angle/range sliders and the results update live. A **Filter & sort** panel lets you sort by tightest FOV fit or by price, and restrict results to CamStreamer App-supported models (ARTPEC-6/7, -8, and -9, merged into a single yes/no filter — the exact chipset is still shown per result). Prices follow whatever currency (€/$/¥) is currently selected in the popup, and stay in sync live if you switch it while the map tab is open.
+Once the cone is drawn, drag the camera pin or either yellow edge handle directly on the map to reshape it — the angle/range sliders and the results update live. A **Filter & sort** panel lets you sort by tightest FOV fit or by price, and restrict results to CamStreamer App-supported models (ARTPEC-6/7, -8, and -9, merged into a single yes/no filter — the exact chipset is still shown per result), to **AXIS OS 13 only**, and to **Deep learning (DLPU) only**. The three restrictions stack, so "a camera that covers this cone, will get OS 13, and can run deep learning on the edge" is one pass. Prices follow whatever currency (€/$/¥) is currently selected in the popup, and stay in sync live if you switch it while the map tab is open.
 
 Matching models appear as cards in a stripe along the bottom of the window, scrolled sideways, each showing a product photo, the model name, FOV range, part number and series, plus chipset and price badges styled to match the ones this extension injects onto axis.com itself (CamStreamer-supported models also get a green edge).
 
@@ -63,19 +102,19 @@ Extensions can't do multicast discovery (Bonjour/ONVIF/SSDP), so this only finds
 
 ## Currency
 
-A € EUR / $ USD / £ GBP / ¥ JPY toggle in the popup switches which currency is shown everywhere — Product Selector, search, product pages, and the popup itself — instantly, with no reload needed. USD and EUR are both hardcoded from Axis's own public price lists (the US and EE/EU comparison-table editions); GBP and JPY have no list price of their own and are always converted live from USD at the current USD/GBP and USD/JPY reference rates.
+A € EUR / $ USD / £ GBP / ¥ JPY toggle in **Settings** (it was in the popup before v6.0) switches which currency is shown everywhere — Product Selector, search, product pages, and the popup itself — instantly, with no reload needed. USD and EUR are both hardcoded from Axis's own public price lists (the US and EE/EU comparison-table editions); GBP and JPY have no list price of their own and are always converted live from USD at the current USD/GBP and USD/JPY reference rates.
 
 A small number of SKUs — mostly US/Canada-only products and 2N-branded devices — have no EUR list price in Axis's EE/EU price list at all. For those, EUR is estimated from USD at the current USD/EUR rate instead of showing nothing, and the price is shown with a "~" prefix (e.g. "~€499") so it's clear it's an approximation rather than a real list price. GBP and JPY prices always carry the same "~" prefix, since they're never a genuine Axis list price either.
 
 ### Hiding prices entirely
 
-A fourth **🚫** option in the same toggle hides every price across the whole extension — Product Selector badges, search badges, product/category badges, the series breadcrumb range, both comparison tables, the popup list, and the FOV map cards. Chipset badges, the chipset filter panel, FOV filtering and the map tool all keep working exactly as before, so it's usable as a pure "find me a suitable camera" tool for people who don't deal with pricing. The choice persists and applies live to open tabs. Cheapest-first sorting still functions (it reveals no numbers), and the popup's FX-rate row hides itself since it has nothing left to explain.
+Unticking **Prices** under *Badges on axis.com* hides every price across the whole extension — Product Selector badges, search badges, product/category badges, the series breadcrumb range, both comparison tables, the popup list, and the FOV map cards. Chipset badges, the chipset filter panel, FOV filtering and the map tool all keep working exactly as before, so it's usable as a pure "find me a suitable camera" tool for people who don't deal with pricing. The choice persists and applies live to open tabs. Cheapest-first sorting still functions (it reveals no numbers), and the popup's FX-rate row hides itself since it has nothing left to explain.
 
 ## Keeping prices current
 
 The extension ships with a recent Axis public price list bundled in as the default (currently Q1/Q2 2026 pricing from Axis's public comparison-table price list, in USD). On top of that base, a small set of products — video recorders and storage media (SD cards) — carry August 2026 US$ and EUR price updates, applied where Axis flagged a price change; EUR is only shown for those updated items. A further set of products that weren't in any prior public price list at all (new SKUs, previously-missing 10-pack/bare-drive variants) has also been added, grouped under a clearly-labeled "New products (August 2026)" section so it's obvious those weren't part of the original comparison table. Axis publishes a new price list roughly every month, and refreshing is built in — no reinstall, no waiting on a new extension version:
 
-1. Click the extension icon, then the **⚙** gear button next to the theme toggle.
+1. Click the extension icon, then the **⚙** gear button in the popup header to open Settings.
 2. Drag the new month's official AXIS Price List `.xls`/`.xlsx` file onto the drop zone (or click to pick the file). Everything happens locally in your browser — the file itself never leaves your machine. Either the USD or the EUR edition works equally well.
 3. The standard AXIS Price List format is recognized and mapped automatically. For anything else (a different layout, a one-off export), a simple column-mapping screen lets you point out which column is the model name, which is the price, and so on, with a live preview before anything is applied.
 4. Before committing, you'll see a coverage report — how many products matched, broken down by category, anything that didn't match, and how many rows describe a product not yet in this catalog at all.
@@ -84,11 +123,15 @@ The extension ships with a recent Axis public price list bundled in as the defau
 
 ## Keeping chipset info current
 
-Chipset labels are sourced from CamStreamer's published camera-compatibility list and refresh automatically about once a week. A manual **Update** button in the popup refreshes it on demand at any time.
+Chipset labels are sourced from CamStreamer's published camera-compatibility list and refresh automatically about once a week. A manual **Update** button in **Settings → Data & updates** refreshes it on demand at any time, alongside the FX-rate and AXIS OS 13 refreshes.
+
+![Settings](docs/img/v6-settings-light.png)
 
 ## Installing
 
-This extension isn't published to the Chrome Web Store, so it's installed as an unpacked extension:
+**From the Chrome Web Store** — [4XS Toolbox](https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl). This is the easy path and it auto-updates.
+
+**From source**, as an unpacked extension:
 
 1. Open `chrome://extensions` in Chrome.
 2. Turn on **Developer mode** (top-right toggle).
@@ -98,3 +141,20 @@ This extension isn't published to the Chrome Web Store, so it's installed as an 
 ### Packaging note
 
 If this is ever zipped up and uploaded through the Chrome Web Store developer dashboard (rather than loaded unpacked), the dashboard enforces a **132-character limit on `manifest.json`'s `description` field** — longer than that, and the upload is rejected with "The description field in manifest is too long." Keep any future edits to `description` under that limit.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Popup, light](docs/img/v6-popup-catalogue-light.png) | ![Popup, dark](docs/img/v6-popup-catalogue-dark.png) |
+| Catalogue — 341 models, 432 SKUs | The same, dark |
+| ![Filter](docs/img/v6-popup-filter.png) | ![Find Cams](docs/img/v6-popup-findcams.png) |
+| Sort and chipset filter | IP Utility Scanner |
+| ![Search results](docs/img/v6-axis-search.png) | ![Settings, dark](docs/img/v6-settings-dark.png) |
+| Badges in axis.com search | Settings, dark |
+
+Store assets live in [`promo/`](promo/).
+
+## Licence & attribution
+
+MIT. Built by **Pavel Kotyza** <kotyza@gmail.com>. Not affiliated with, endorsed by, or supported by Axis Communications AB; "AXIS" and product names are their trademarks, used here only to refer to their products.

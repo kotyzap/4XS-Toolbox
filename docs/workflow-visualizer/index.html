@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4XS Toolbox — how a badge gets on the page</title>
+<meta name="description" content="The 4XS Toolbox v6.0 data pipeline: where chipset, AXIS OS 13, compute and price come from, and how they become badges on axis.com.">
+<script>
+  (function () {
+    var KEY = "axis-overlay-docs-theme";
+    var stored = null;
+    try { stored = localStorage.getItem(KEY); } catch (e) {}
+    var theme = stored || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #FFC800;
+    --yellow-soft: #FFF3C9;
+    --yellow-deep: #B78E00;
+    --bg: #FAFAF7;
+    --bg-alt: #F0EFE8;
+    --surface: #FFFFFF;
+    --ink: #121212;
+    --mute: #56544D;
+    --mute-2: #7A7870;
+    --border: #DDDACF;
+    --border-strong: #C9C6B9;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+    --n-source: #1d4ed8;  --n-source-bg: #EAF0FE;
+    --n-build:  #7c3aed;  --n-build-bg:  #F3EDFE;
+    --n-store:  #5b6472;  --n-store-bg:  #EDEFF2;
+    --n-render: #1f7a3d;  --n-render-bg: #E7F3EB;
+    --n-user:   #B78E00;  --n-user-bg:   #FFF3C9;
+    --line: #C9C6B9;
+  }
+  html[data-theme="dark"] {
+    --bg: #0E0E0E;
+    --bg-alt: #1A1A1A;
+    --surface: #161616;
+    --ink: #F4F3EE;
+    --mute: #B9B8B2;
+    --mute-2: #9B9B9B;
+    --border: #2C2C2C;
+    --border-strong: #454545;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.5);
+    --n-source: #6694ff;  --n-source-bg: #16213C;
+    --n-build:  #b38dff;  --n-build-bg:  #241A38;
+    --n-store:  #9aa4b2;  --n-store-bg:  #1C2026;
+    --n-render: #4bbf74;  --n-render-bg: #15281C;
+    --n-user:   #FFC800;  --n-user-bg:   #332A06;
+    --line: #454545;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Archivo', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+  header.bar {
+    background: #1a1a1a;
+    border-bottom: 4px solid var(--yellow);
+    color: #fff;
+  }
+  html[data-theme="dark"] header.bar { background: #0b0b0b; }
+  .bar-in { display: flex; align-items: center; gap: 14px; padding: 16px 0; }
+  .mark {
+    width: 34px; height: 34px; border-radius: 9px; background: #1a1a1a;
+    border: 1px solid #333; display: grid; place-items: center; flex: none;
+  }
+  .mark svg { display: block; }
+  .bar h1 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+  .bar .t2 { margin: 0; font-size: 12.5px; color: #b8b8b8; }
+  .bar-sp { margin-left: auto; }
+  .tbtn {
+    background: transparent; color: #fff; border: 1px solid #3a3a3a;
+    border-radius: 9px; width: 38px; height: 38px; cursor: pointer;
+    display: grid; place-items: center; transition: border-color .15s, background .15s;
+  }
+  .tbtn:hover { border-color: var(--yellow); background: rgba(255,200,0,.1); }
+
+  .intro { padding: 44px 0 10px; }
+  .tag {
+    display: inline-block; font-size: 11.5px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; padding: 5px 11px; border-radius: 999px;
+    background: var(--yellow-soft); color: var(--yellow-deep); border: 1px solid var(--border-strong);
+  }
+  html[data-theme="dark"] .tag { background: #332A06; color: var(--yellow); border-color: #4a3f10; }
+  .intro h2 { font-size: clamp(28px, 4.4vw, 44px); line-height: 1.1; letter-spacing: -.02em; margin: 16px 0 12px; font-weight: 800; }
+  .intro p { color: var(--mute); max-width: 68ch; margin: 0; font-size: 16.5px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 8px; }
+  .lg {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--mute); cursor: pointer; transition: .15s;
+  }
+  .lg:hover { border-color: var(--border-strong); color: var(--ink); }
+  .lg[aria-pressed="true"] { color: var(--ink); border-color: var(--border-strong); box-shadow: var(--shadow); }
+  .lg .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  .hint { font-size: 13px; color: var(--mute-2); margin: 4px 0 18px; }
+
+  .board { position: relative; padding-bottom: 56px; padding-left: 26px; margin-left: -26px; }
+  svg.links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible; }
+
+  .lane { position: relative; z-index: 1; margin-bottom: 30px; }
+  .lane-head {
+    position: relative; z-index: 2;
+    display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px;
+    padding: 2px 10px 7px 0; border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .lane-head .n {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; font-weight: 600;
+    color: var(--yellow-deep); letter-spacing: .06em;
+  }
+  html[data-theme="dark"] .lane-head .n { color: var(--yellow); }
+  .lane-head h3 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+  .lane-head span.sub { font-size: 13px; color: var(--mute-2); }
+
+  .row { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(212px, 1fr)); }
+
+  .node {
+    position: relative; text-align: left; width: 100%;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--c); border-radius: 12px;
+    padding: 14px 16px; cursor: pointer; font: inherit; color: inherit;
+    transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease, opacity .14s ease;
+  }
+  .node:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--border-strong); border-left-color: var(--c); }
+  .node:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  .node .ico { font-size: 17px; line-height: 1; margin-bottom: 8px; display: block; }
+  .node .ttl { font-size: 14.5px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 3px; }
+  .node .sub { font-size: 12.5px; color: var(--mute); line-height: 1.45; overflow-wrap: anywhere; }
+  .node .file {
+    display: inline-block; margin-top: 9px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; padding: 2.5px 7px; border-radius: 5px;
+    background: var(--cbg); color: var(--c); font-weight: 600;
+    max-width: 100%; overflow-wrap: anywhere;
+  }
+  .node.on { border-color: var(--c); box-shadow: 0 0 0 2px var(--cbg), var(--shadow); }
+  .board.focusing .node:not(.on) { opacity: .26; }
+  .board.focusing .lane-head { opacity: .5; }
+
+  .detail {
+    position: sticky; bottom: 14px; z-index: 3; margin-top: 8px;
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-left: 4px solid var(--yellow); border-radius: 12px;
+    padding: 15px 18px; box-shadow: var(--shadow);
+  }
+  .detail[hidden] { display: none; }
+  .detail h4 { margin: 0 0 5px; font-size: 14.5px; font-weight: 700; }
+  .detail p { margin: 0; font-size: 13.5px; color: var(--mute); max-width: 82ch; }
+  .detail .close {
+    float: right; border: 1px solid var(--border); background: transparent; color: var(--mute);
+    border-radius: 7px; width: 26px; height: 26px; cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  .detail .close:hover { color: var(--ink); border-color: var(--border-strong); }
+
+  footer {
+    border-top: 1px solid var(--border); margin-top: 20px; padding: 26px 0 50px;
+    font-size: 13px; color: var(--mute-2);
+  }
+  footer a { color: var(--ink); text-decoration-color: var(--yellow); text-underline-offset: 3px; }
+  footer .sep { margin: 0 8px; opacity: .45; }
+
+  @media (max-width: 620px) {
+    .row { grid-template-columns: 1fr; }
+    svg.links { display: none; }
+    .intro { padding-top: 30px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .node, .lg { transition: none; }
+    .node:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap bar-in">
+    <div class="mark" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M12 3 L20 10 H4 Z" fill="#FFC800"/>
+        <circle cx="12" cy="17" r="3.4" fill="none" stroke="#fff" stroke-width="2.1"/>
+      </svg>
+    </div>
+    <div>
+      <h1>4XS Toolbox</h1>
+      <p class="t2">Workflow visualizer &middot; v6.0</p>
+    </div>
+    <div class="bar-sp"></div>
+    <button class="tbtn" id="theme" type="button" aria-label="Switch between light and dark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+        <circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <span class="tag">Data pipeline</span>
+    <h2>How a badge gets on the page</h2>
+    <p>Four numbers end up next to an Axis camera — chipset, AXIS&nbsp;OS&nbsp;13, compute unit, price. Each comes from a different place, and only one of them is a live fetch at the moment you look. This is the whole path, from source to pixel. Click any step.</p>
+  </section>
+
+  <div class="legend" id="legend">
+    <button class="lg" data-k="source" aria-pressed="false"><span class="dot" style="background:var(--n-source)"></span>Upstream source</button>
+    <button class="lg" data-k="build"  aria-pressed="false"><span class="dot" style="background:var(--n-build)"></span>Build step</button>
+    <button class="lg" data-k="store"  aria-pressed="false"><span class="dot" style="background:var(--n-store)"></span>Shipped / stored</button>
+    <button class="lg" data-k="render" aria-pressed="false"><span class="dot" style="background:var(--n-render)"></span>Renders a badge</button>
+    <button class="lg" data-k="user"   aria-pressed="false"><span class="dot" style="background:var(--n-user)"></span>You</button>
+  </div>
+  <p class="hint">Click a step for the detail. Click a legend chip to isolate a kind. Esc clears.</p>
+
+  <div class="board" id="board">
+    <svg class="links" id="links" aria-hidden="true"></svg>
+
+    <section class="lane">
+      <div class="lane-head"><span class="n">01</span><h3>Upstream sources</h3><span class="sub">none of them Axis-sanctioned APIs</span></div>
+      <div class="row" id="lane1"></div>
+    </section>
+
+    <section class="lane">
+      <div class="lane-head"><span class="n">02</span><h3>Turned into data files</h3><span class="sub">offline, at build time — reviewable in the diff</span></div>
+      <div class="row" id="lane2"></div>
+    </section>
+
+    <section class="lane">
+      <div class="lane-head"><span class="n">03</span><h3>Shipped in the extension</h3><span class="sub">plus whatever the weekly refresh has overwritten</span></div>
+      <div class="row" id="lane3"></div>
+    </section>
+
+    <section class="lane">
+      <div class="lane-head"><span class="n">04</span><h3>Rendered where you are looking</h3><span class="sub">content scripts and the popup</span></div>
+      <div class="row" id="lane4"></div>
+    </section>
+
+    <section class="lane">
+      <div class="lane-head"><span class="n">05</span><h3>Kept current</h3><span class="sub">a weekly alarm, and you — dashed lines write back</span></div>
+      <div class="row" id="lane5"></div>
+    </section>
+
+    <div class="detail" id="detail" hidden>
+      <button class="close" id="detailClose" type="button" aria-label="Close">&times;</button>
+      <h4 id="detailTitle"></h4>
+      <p id="detailBody"></p>
+    </div>
+  </div>
+</main>
+
+<footer class="wrap">
+  <a href="../">4XS Toolbox</a><span class="sep">·</span><a href="https://github.com/kotyzap/4XS-Toolbox">Source</a><span class="sep">·</span><a href="https://toolbox.4xs.dev">toolbox.4xs.dev</a>
+  <br><br>
+  Built by Pavel Kotyza. Not affiliated with, endorsed by, or supported by Axis Communications AB.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var NODES = [
+    // lane 1 — sources
+    { id:"camstreamer", lane:1, kind:"source", ico:"🧩", ttl:"CamStreamer app list",
+      sub:"Published ACAP compatibility table, one row per camera.",
+      file:"camstreamer.com",
+      detail:"The only public, maintained mapping of Axis model to chipset generation. background.js re-fetches and re-parses it weekly; parseChipsets() canonicalises the model labels so “AXIS P3245–LVE” and “P3245-LVE” land on the same key." },
+    { id:"osdocs", lane:1, kind:"source", ico:"📄", ttl:"AXIS OS support pages",
+      sub:"82 per-model pages plus the Y2038 guidance on help.axis.com.",
+      file:"help.axis.com",
+      detail:"Axis publishes the firmware track per product and, separately, which 32-bit products will receive AXIS OS 13. Neither is an API, so both are parsed from the pages. If fewer than all 82 parse, the refresh is abandoned and the previous data kept — a half-updated table is worse than a stale one." },
+    { id:"psfeed", lane:1, kind:"source", ico:"🛰️", ttl:"Product selector feed",
+      sub:"products.json — properties.analyticsComputeCapability.",
+      file:"axis.com/app/tim/ps",
+      detail:"A structured per-model value straight from Axis, covering every ACTIVE product, and exactly what the Product selector itself renders as “Compute capabilities”. It replaced the quarterly comparison table as the primary source, because that table prints “-” both for MLPU devices and for devices with no compute unit at all." },
+    { id:"pricelist", lane:1, kind:"source", ico:"📊", ttl:"AXIS Price List",
+      sub:"The public comparison-table editions, EUR and USD.",
+      file:".xls / .xlsx",
+      detail:"List price, not street price. EUR comes from the EE/EU edition; USD for those same products is derived at the rate in force when the list was generated, so it is an estimate rather than a published Axis USD list. Roughly monthly." },
+    { id:"ecb", lane:1, kind:"source", ico:"💱", ttl:"ECB reference rates",
+      sub:"EUR to USD, GBP and JPY.",
+      file:"api.frankfurter.dev",
+      detail:"GBP and JPY have no Axis list price of their own, so they are always converted and always carry a “~” prefix. Refreshed on the same weekly alarm as the chipset data." },
+
+    // lane 2 — build
+    { id:"buildos13", lane:2, kind:"build", ico:"⚖️", ttl:"Resolve OS 13 verdict",
+      sub:"Six ordered rules, and the courage to say “unknown”.",
+      file:"tools/build-lifecycle.py",
+      detail:"ARTPEC-6 → no, Axis says so outright. On the published 32-bit list → yes. A 13.x build already on the page → yes, observed rather than inferred. Known 32-bit, newest is 12.x, absent from that list → unknown, because the sources disagree. Newest ≤ 11.x → no. Otherwise 64-bit → yes. Guessing here would be worse than silence." },
+    { id:"buildcompute", lane:2, kind:"build", ico:"🧠", ttl:"Resolve DLPU / MLPU",
+      sub:"Feed first, datasheet wins ties.",
+      file:"compute-data.js header",
+      detail:"Two cautions are encoded in the file itself. A missing field is not proof of “no compute unit” — P3945-R and Q8752-E Mk II are absent from the feed and carry a DLPU, confirmed by datasheet and by two comparison tables. And chipset generation is never a shortcut: ARTPEC-7 alone spans DLPU, MLPU and nothing." },
+    { id:"buildcat", lane:2, kind:"build", ico:"🗂️", ttl:"Merge the catalogue",
+      sub:"341 models, 432 SKUs, one key space.",
+      file:"tools/build-aliases.py",
+      detail:"Model names, part numbers, multipack SKUs and series cards all have to resolve to the same entry, or a badge lands on the wrong camera. Aliases are generated rather than hand-kept." },
+
+    // lane 3 — shipped
+    { id:"os13data", lane:3, kind:"store", ico:"📦", ttl:"os13-data.js",
+      sub:"verdict · SoC · arch · newest build · support-until.",
+      file:"46 KB",
+      detail:"Generated, never hand-edited. background.js can overwrite individual verdicts after a refresh, which is how an “unknown” becomes a “yes” the week a 13.x build actually ships." },
+    { id:"computedata", lane:3, kind:"store", ico:"📦", ttl:"compute-data.js",
+      sub:"DLPU, MLPU, or no compute unit.",
+      file:"5 KB",
+      detail:"Small, because it is one value per model. The size is the point: the reasoning lives in the header comment, the data stays trivially diffable." },
+    { id:"chipsetdata", lane:3, kind:"store", ico:"📦", ttl:"chipset-data.js",
+      sub:"579 models, refreshed weekly over the bundled copy.",
+      file:"13 KB",
+      detail:"Bundled so the extension works on first run with no network, then kept current by the alarm. Generations are grouped for legibility: ARTPEC 3-5, ARTPEC 6-9 with a checkmark for CamStreamer support, AMB plus the model code for Ambarella." },
+    { id:"catalogdata", lane:3, kind:"store", ico:"📦", ttl:"catalog-data.js",
+      sub:"Names, part numbers, categories, prices, aliases.",
+      file:"84 KB",
+      detail:"The spine everything else joins against. A model the catalogue does not know gets no badges at all, which is the correct failure — better blank than wrong." },
+    { id:"localstore", lane:3, kind:"store", ico:"🔒", ttl:"chrome.storage.local",
+      sub:"Your overrides, favourites, and any price list you dropped in.",
+      file:"never leaves the browser",
+      detail:"Uploaded price lists are parsed in the page and stored here. No POST or PUT is issued anywhere by this extension, ever — asserted by test, not just by policy." },
+
+    // lane 4 — render
+    { id:"selector", lane:4, kind:"render", ico:"🔍", ttl:"Product selector",
+      sub:"470 products, badge stack per card, plus the filter panel.",
+      file:"content.js",
+      detail:"The densest surface: a stack of up to four badges on every card, a floating Filters panel that narrows the page by chipset generation, and cheapest-first sorting per series. The same panel hides any badge type you do not want." },
+    { id:"productpg", lane:4, kind:"render", ico:"🏷️", ttl:"Product & category pages",
+      sub:"Inline in the breadcrumb, and two extra rows in Compare.",
+      file:"products-content.js",
+      detail:"On a product page the badges sit in the breadcrumb line next to the model name. On a series page the breadcrumb carries the full price range and every chipset in the range. The Compare Products table gets Chipset and Price rows above every other spec." },
+    { id:"searchpg", lane:4, kind:"render", ico:"🔎", ttl:"axis.com search",
+      sub:"Appended to each matching result title.",
+      file:"search-content.js",
+      detail:"Searching a model or a whole series badges every result that names one specific product — and offers the favourite heart inline, so a search is also a way to build your shortlist." },
+    { id:"popup", lane:4, kind:"render", ico:"🧰", ttl:"Toolbar popup",
+      sub:"Catalogue, FoV map, IP scanner. Three tabs, nothing else.",
+      file:"popup.js",
+      detail:"v6.0 emptied this of settings. What is left is the tab row, the search box and the results. Each row carries chipset, OS 13, compute, price and a heart; every text field copies itself on click." },
+    { id:"findcams", lane:4, kind:"render", ico:"📡", ttl:"IP Utility Scanner",
+      sub:"Real cameras on your subnet, badged like catalogue rows.",
+      file:"find-cams.js",
+      detail:"VAPIX basicdeviceinfo answers without a password on AXIS OS 10+. The model it returns is joined against the same catalogue, so a camera on your wall gets the same four badges as one on the website — including whether it will see AXIS OS 13." },
+
+    // lane 5 — upkeep
+    { id:"alarm", lane:5, kind:"build", ico:"⏰", ttl:"Weekly alarm",
+      sub:"Chipset list, FX rates, and the OS 13 re-check.",
+      file:"chrome.alarms, 7d",
+      detail:"periodInMinutes 60 × 24 × 7. The OS 13 pass only re-reads models whose verdict is unknown or came from a firmware track, 82 pages at a bounded concurrency, and keeps the old table if too few parse." },
+    { id:"settings", lane:5, kind:"user", ico:"⚙️", ttl:"Settings",
+      sub:"Badge toggles, currency, language, manual refresh.",
+      file:"options.html",
+      detail:"New in v6.0 and the reason the popup got its space back. Each of the four badge types switches off independently, and each data source has its own Update button and status line — including when the last attempt failed and why." },
+    { id:"upload", lane:5, kind:"user", ico:"📥", ttl:"Your own price list",
+      sub:"Drop the month's .xls. Parsed here, never uploaded.",
+      file:"vendor/xlsx",
+      detail:"Standard AXIS Price List layouts map automatically; anything else gets a column-mapping screen with a live preview. You see a coverage report before it commits, unknown SKUs are added rather than dropped, and reverting to the bundled list is one click." }
+  ];
+
+  var EDGES = [
+    ["camstreamer","chipsetdata"], ["osdocs","buildos13"], ["psfeed","buildcompute"],
+    ["pricelist","buildcat"], ["ecb","localstore"],
+    ["buildos13","os13data"], ["buildcompute","computedata"], ["buildcat","catalogdata"],
+    ["os13data","selector"], ["os13data","popup"],
+    ["computedata","selector"], ["computedata","productpg"],
+    ["chipsetdata","selector"], ["chipsetdata","findcams"],
+    ["catalogdata","selector"], ["catalogdata","productpg"], ["catalogdata","searchpg"],
+    ["catalogdata","popup"], ["catalogdata","findcams"],
+    ["localstore","popup"], ["localstore","selector"],
+    ["alarm","chipsetdata"], ["alarm","os13data"],
+    ["settings","localstore"], ["upload","localstore"]
+  ];
+
+  var byId = {};
+  NODES.forEach(function (n) { byId[n.id] = n; });
+
+  // ---- render nodes
+  NODES.forEach(function (n) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "node";
+    b.id = "n-" + n.id;
+    b.dataset.kind = n.kind;
+    b.style.setProperty("--c", "var(--n-" + n.kind + ")");
+    b.style.setProperty("--cbg", "var(--n-" + n.kind + "-bg)");
+    b.innerHTML =
+      '<span class="ico" aria-hidden="true">' + n.ico + "</span>" +
+      '<div class="ttl"></div><div class="sub"></div><span class="file mono"></span>';
+    b.querySelector(".ttl").textContent = n.ttl;
+    b.querySelector(".sub").textContent = n.sub;
+    b.querySelector(".file").textContent = n.file;
+    document.getElementById("lane" + n.lane).appendChild(b);
+    b.addEventListener("click", function (e) { e.stopPropagation(); focusNode(n.id); });
+  });
+
+  // ---- connection lines
+  var svg = document.getElementById("links");
+  var board = document.getElementById("board");
+  var NS = "http://www.w3.org/2000/svg";
+  var paths = [];
+
+  function centreOf(id) {
+    var el = document.getElementById("n-" + id);
+    var r = el.getBoundingClientRect();
+    var br = board.getBoundingClientRect();
+    return { el: el, x: r.left - br.left + r.width / 2, top: r.top - br.top, bottom: r.top - br.top + r.height };
+  }
+
+  function drawLines() {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    paths = [];
+    if (window.innerWidth <= 620) return;
+    EDGES.forEach(function (e) {
+      var a = centreOf(e[0]), b = centreOf(e[1]);
+      var p = document.createElementNS(NS, "path");
+      var up = b.top < a.bottom;
+      if (up) {
+        // Feedback: a later step writing back into an earlier one. Bowed out to
+        // the left gutter and dashed, so it reads as a loop rather than a cross.
+        var y1u = a.top, y2u = b.bottom, gx = -14;
+        p.setAttribute("d", "M" + a.x + "," + y1u +
+          " C" + gx + "," + y1u + " " + gx + "," + y2u + " " + b.x + "," + y2u);
+        p.setAttribute("stroke-dasharray", "5 4");
+      } else {
+        var y1 = a.bottom, y2 = b.top, mid = y1 + (y2 - y1) / 2;
+        p.setAttribute("d", "M" + a.x + "," + y1 + " C" + a.x + "," + mid + " " + b.x + "," + mid + " " + b.x + "," + y2);
+      }
+      p.setAttribute("fill", "none");
+      p.setAttribute("stroke", "var(--line)");
+      p.setAttribute("stroke-width", "1.4");
+      p.setAttribute("opacity", up ? ".4" : ".55");
+      svg.appendChild(p);
+      paths.push({ el: p, from: e[0], to: e[1], up: up });
+    });
+  }
+
+  // ---- focus / dim
+  var detail = document.getElementById("detail");
+  var dTitle = document.getElementById("detailTitle");
+  var dBody = document.getElementById("detailBody");
+  var current = null;
+
+  function clearFocus() {
+    current = null;
+    board.classList.remove("focusing");
+    NODES.forEach(function (n) { document.getElementById("n-" + n.id).classList.remove("on"); });
+    paths.forEach(function (p) { p.el.setAttribute("stroke", "var(--line)"); p.el.setAttribute("opacity", p.up ? ".4" : ".55"); p.el.setAttribute("stroke-width", "1.4"); });
+    detail.hidden = true;
+    [].forEach.call(document.querySelectorAll(".lg"), function (c) { c.setAttribute("aria-pressed", "false"); });
+  }
+
+  function focusNode(id) {
+    if (current === id) { clearFocus(); return; }
+    clearFocus();
+    current = id;
+    var n = byId[id];
+    var keep = { };
+    keep[id] = true;
+    paths.forEach(function (p) {
+      if (p.from === id || p.to === id) { keep[p.from] = true; keep[p.to] = true; }
+    });
+    board.classList.add("focusing");
+    Object.keys(keep).forEach(function (k) { document.getElementById("n-" + k).classList.add("on"); });
+    paths.forEach(function (p) {
+      if (p.from === id || p.to === id) {
+        p.el.setAttribute("stroke", "var(--n-" + n.kind + ")");
+        p.el.setAttribute("opacity", "1");
+        p.el.setAttribute("stroke-width", "2.2");
+      } else {
+        p.el.setAttribute("opacity", ".12");
+      }
+    });
+    dTitle.textContent = n.ttl;
+    dBody.textContent = n.detail;
+    detail.hidden = false;
+    // Keep the clicked node clear of the sticky detail panel.
+    var el = document.getElementById("n-" + id);
+    var r = el.getBoundingClientRect();
+    if (r.bottom > window.innerHeight - 150 || r.top < 90) {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }
+
+  function focusKind(kind, chip) {
+    var wasOn = chip.getAttribute("aria-pressed") === "true";
+    clearFocus();
+    if (wasOn) return;
+    chip.setAttribute("aria-pressed", "true");
+    board.classList.add("focusing");
+    NODES.forEach(function (n) {
+      if (n.kind === kind) document.getElementById("n-" + n.id).classList.add("on");
+    });
+    paths.forEach(function (p) {
+      var hit = byId[p.from].kind === kind || byId[p.to].kind === kind;
+      p.el.setAttribute("opacity", hit ? ".8" : ".1");
+    });
+  }
+
+  [].forEach.call(document.querySelectorAll(".lg"), function (chip) {
+    chip.addEventListener("click", function (e) { e.stopPropagation(); focusKind(chip.dataset.k, chip); });
+  });
+  document.getElementById("detailClose").addEventListener("click", clearFocus);
+  document.addEventListener("click", function () { if (current || board.classList.contains("focusing")) clearFocus(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") clearFocus(); });
+
+  // ---- theme
+  var KEY = "axis-overlay-docs-theme";
+  document.getElementById("theme").addEventListener("click", function () {
+    var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem(KEY, next); } catch (err) {}
+  });
+
+  // ---- layout
+  function relayout() { drawLines(); }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+  window.addEventListener("load", relayout);
+  window.addEventListener("resize", relayout);
+  relayout();
+})();
+</script>
+</body>
+</html>
