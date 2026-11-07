@@ -11,6 +11,20 @@
 // "http://*/*" and we ask for the narrow per-IP subset here - nothing is
 // granted at install time).
 //
+// DECIDED, DO NOT "TIDY" (Pavel, 2026-11-07). Firefox renders that request as
+// a prompt listing all 254 addresses one per line, which looks alarming.
+// Asking for the declared "http://*/*" instead would collapse it to a single
+// line - but that line reads "Access your data for all websites", which is a
+// far worse thing to ask of a tool whose whole pitch is that nothing leaves
+// your machine. The long, ugly, honest list stays.
+//
+// Firefox gotcha: reloading a temporary add-on REVOKES optional host
+// permissions, so the prompt returns on the next scan and, until it is
+// answered, every probe is refused before it leaves the browser - the POST
+// below carries content-type: application/json, so it needs a CORS preflight
+// that only the granted host permission waives. That failure now reports
+// itself (see probe/tally) rather than looking like an empty network.
+//
 // Results and the scanned subnet persist in chrome.storage.local
 // (findCamsCache) so reopening the popup shows the last list instantly
 // instead of a blank panel. If permission for that subnet was already

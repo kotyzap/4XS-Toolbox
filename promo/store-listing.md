@@ -172,6 +172,25 @@ real unpacked build — no mockups.
 | `host_permissions: get.geojs.io` | One city-level location lookup to centre the map. |
 | `host_permissions: www.axis.com` | Product photos for FoV result cards and the AXIS OS support pages behind the OS 13 refresh. |
 
+## Note for reviewers (include with the AMO submission)
+
+**The IP Utility Scanner will appear broken if you test it without granting
+the permission prompt.** Pressing Scan asks for host access to the 254
+addresses of the chosen subnet. Until that is allowed, every probe is refused
+by the browser before it is sent — the request is a POST with
+`content-type: application/json`, so it needs a CORS preflight that only the
+granted host permission waives. The scan then reports that it was blocked
+rather than claiming the network is empty.
+
+Reloading a temporary add-on revokes that optional permission, so the prompt
+reappears after every reload during review.
+
+The prompt deliberately lists all 254 addresses individually rather than
+asking for the declared `http://*/*` in one line. Match patterns cannot
+express `192.168.1.*`, and requesting the broad pattern would read as "access
+your data for all websites" for an add-on that never sends anything off the
+machine. Scanning is also the only thing that permission is ever used for.
+
 ## Pre-submit checklist
 
 - [ ] `manifest.json` description ≤ 132 chars (dashboard rejects longer) — currently 128.
