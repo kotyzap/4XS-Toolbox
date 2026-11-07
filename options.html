@@ -249,14 +249,114 @@
     margin: 0 0 10px;
     color: var(--text);
   }
+
+  .toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px 16px;
+    margin-top: 10px;
+  }
+  .toggle-grid label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .seg button {
+    padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    border: 1px solid rgba(0,0,0,.18); background: transparent; color: inherit;
+    font-weight: 600;
+  }
+  .seg button.active { background: #ffcc33; border-color: #ffcc33; color: #1a1a1a; }
+  #langSelect { margin-top: 8px; padding: 6px 10px; border-radius: 6px; }
+</style>
+<style>
+  /* Data & updates rows: label + status on the left, one action on the right. */
+  #dataCard .data-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 9px 0; border-top: 1px solid var(--border, #e2e2e2);
+  }
+  #dataCard .data-row:first-of-type { border-top: 0; }
+  #dataCard .data-label { font-weight: 600; font-size: 13px; }
+  #dataCard .data-status { font-size: 12px; color: var(--muted, #6b6b6b); margin-top: 2px; }
+  #dataCard .data-status.error { color: var(--error, #c8102e); }
+  #dataCard .data-row button { flex: 0 0 auto; }
 </style>
 </head>
 <body>
   <header>
-    <h1 id="headerTitle">4XS Toolbox — Monthly price update</h1>
-    <div class="sub" id="headerSubtitle">Drop the AXIS Price List (.xls) each month to refresh EUR and FX-derived USD/JPY prices — no reinstall needed.</div>
+    <h1 id="headerTitle">4XS Toolbox — Settings</h1>
+    <div class="sub" id="headerSubtitle">What the extension shows on axis.com, and where its prices come from.</div>
   </header>
   <main>
+    <!-- Settings hub. Every control here writes the same chrome.storage.local
+         key the popup drawer and the on-page filter panel use, so the three
+         surfaces can never disagree. -->
+    <div class="card" id="settingsCard">
+      <h2 id="settingsHeading">Badges on axis.com</h2>
+      <div class="hint" id="settingsHint">Shown next to each camera on axis.com and in the extension popup.</div>
+      <div class="toggle-grid">
+        <label><input type="checkbox" id="showChipset" checked> <span id="showChipsetLabel">Chipset</span></label>
+        <label><input type="checkbox" id="showOs13" checked> <span id="showOs13Label">AXIS OS 13</span></label>
+        <label><input type="checkbox" id="showCompute" checked> <span id="showComputeLabel">DLPU / MLPU</span></label>
+        <label><input type="checkbox" id="showPrices" checked> <span id="showPricesLabel">Prices</span></label>
+      </div>
+
+      <h2 id="currencyHeading" style="margin-top:18px">Currency</h2>
+      <div class="hint" id="currencyHint">Detected from the axis.com locale you browse; change it here to override.</div>
+      <div class="seg" id="currencyRow">
+        <button type="button" data-cur="USD">$ USD</button>
+        <button type="button" data-cur="EUR">€ EUR</button>
+        <button type="button" data-cur="GBP">£ GBP</button>
+        <button type="button" data-cur="JPY">¥ JPY</button>
+      </div>
+
+      <h2 id="languageHeading" style="margin-top:18px">Language</h2>
+      <div class="hint" id="languageHint">Detected from your browser. Pick one to override.</div>
+      <select id="langSelect"></select>
+
+      <h2 id="priceSourceHeading" style="margin-top:18px">Price source</h2>
+      <div id="priceSourceStatus" class="hint">loading…</div>
+    </div>
+
+    <!-- Moved here from the popup's gear drawer. Everything that reaches out
+         to a network lives in one place now, and the popup's gear opens this
+         page instead of expanding a drawer over the catalogue. -->
+    <div class="card" id="dataCard">
+      <h2 id="dataHeading">Data &amp; updates</h2>
+      <div class="hint" id="dataHint">Nothing here refreshes on its own except chipset data and FX rates, which also run on a weekly background check.</div>
+
+      <div class="data-row">
+        <div>
+          <div class="data-label" id="fxLabel">FX rates (EUR→USD/GBP/JPY)</div>
+          <div class="data-status" id="fxStatus">loading…</div>
+        </div>
+        <button type="button" id="refreshFx">Update</button>
+      </div>
+
+      <div class="data-row">
+        <div>
+          <div class="data-label" id="chipsetLabel">Chipset data (CamStreamer)</div>
+          <div class="data-status" id="chipsetStatus">loading…</div>
+        </div>
+        <button type="button" id="refreshChipsets">Update</button>
+      </div>
+
+      <div class="data-row">
+        <div>
+          <div class="data-label" id="os13Label">AXIS OS 13 badges on axis.com</div>
+          <div class="data-status" id="os13Status"></div>
+        </div>
+        <button type="button" id="refreshOs13" title="Re-read each model's newest AXIS OS build from its axis.com support page">Update</button>
+      </div>
+
+      <div class="data-row">
+        <div>
+          <div class="data-label" id="monthlyLabel">Upload .xls pricelist</div>
+          <div class="data-status" id="monthlyHint">Drop a monthly price list on the card below.</div>
+        </div>
+        <button type="button" id="jumpToUpload">Go to upload</button>
+      </div>
+
+      <p class="hint" id="footerText" style="margin-top:14px"></p>
+    </div>
+
     <div class="card">
       <h2 id="currentStatusHeading">Current status</h2>
       <div id="currentStatus">loading…</div>
@@ -366,6 +466,8 @@
   </main>
   <script src="i18n.js"></script>
   <script src="catalog-data.js"></script>
+<script src="os13-data.js"></script>
+<script src="compute-data.js"></script>
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="options.js"></script>
 </body>

@@ -31,6 +31,8 @@
     sortOptionFit: "画角が最も無駄なく合う順",
     sortOptionPrice: "価格が安い順",
     camstreamerOnlyLabel: "CamStreamer App対応モデルのみ (ARTPEC-6/7、ARTPEC-8、ARTPEC-9)",
+    os13OnlyLabel: "AXIS OS 13 対応モデルのみ",
+    dlpuOnlyLabel: "ディープラーニング (DLPU) 搭載モデルのみ",
     summaryHeading: "マッチの詳細",
     resultsHeading: "該当するAxisモデル",
     resultsCount: (n) => `${n} 件`,
@@ -376,6 +378,36 @@
   const FOVS = (typeof FOV_DATA !== "undefined" && FOV_DATA.fov) || {};
   const CHIPSETS = (typeof CHIPSET_DATA !== "undefined" && CHIPSET_DATA.chipsets) || {};
 
+  // OS 13 verdict and compute capability, from the same bundled data the
+  // popup and the axis.com badges use. Keys there are bare model codes
+  // ("Q1656"), the rows here carry catalog keys ("AXIS Q1656").
+  //
+  // Matching is exact and never trims trailing tokens: "M1137" must not
+  // resolve to "M1137 Mk II" - different product, different verdict.
+  const normLife = (x) => (x || "").toUpperCase().replace(/^AXIS\s+/, "").replace(/[^A-Z0-9]/g, "");
+  const OS13_MAP = new Map();
+  const COMPUTE_MAP = new Map();
+  if (typeof OS13_DATA !== "undefined") {
+    const src = OS13_DATA.models || OS13_DATA;
+    for (const k of Object.keys(src)) OS13_MAP.set(normLife(k), src[k]);
+  }
+  if (typeof COMPUTE_DATA !== "undefined") {
+    const src = COMPUTE_DATA.models || COMPUTE_DATA;
+    for (const k of Object.keys(src)) COMPUTE_MAP.set(normLife(k), src[k]);
+  }
+  // "unknown" is a verdict we cannot stand behind, so it resolves to null
+  // and renders nothing. No badge must never read as "no".
+  function lifeFor(modelKey) {
+    const n = normLife(modelKey);
+    const e = OS13_MAP.get(n);
+    const c = COMPUTE_MAP.get(n);
+    return {
+      os13: e && e.v !== "unknown" ? e.v === "os13" : null,
+      os13Entry: e && e.v !== "unknown" ? e : null,
+      compute: c === "d" ? "DLPU" : c === "m" ? "MLPU" : null,
+    };
+  }
+
   // Same chipset labels the Product Selector's "CamStreamer App supported"
   // filter preset uses (content.js CAMSTREAMER_ACAPS_PRESET) - kept as a
   // literal copy rather than a shared import since this is a plain script
@@ -509,6 +541,7 @@
         fov,
         chipset,
         camstreamerSupported: chipset ? CAMSTREAMER_ACAPS_PRESET.includes(chipset) : false,
+        life: lifeFor(modelKey),
         cameraClass: cameraClassOf(entry.section, fov, bare),
         multiSensor: MULTISENSOR_MODELS.has(bare),
       };
@@ -569,8 +602,12 @@
   const rangeInput = document.getElementById("rangeInput");
   const sortSelect = document.getElementById("sortSelect");
   const camstreamerOnly = document.getElementById("camstreamerOnly");
+  const os13Only = document.getElementById("os13Only");
+  const dlpuOnly = document.getElementById("dlpuOnly");
   sortSelect.addEventListener("change", runMatch);
   camstreamerOnly.addEventListener("change", runMatch);
+  os13Only.addEventListener("change", runMatch);
+  dlpuOnly.addEventListener("change", runMatch);
 
   // ---------------------------------------------------------------------
   // Click-to-copy on the SKU badges. Delegated from the track rather than
@@ -730,6 +767,8 @@
       "camstreamerOnlyLabel",
       "CamStreamer App supported only (ARTPEC-6/7, ARTPEC-8, ARTPEC-9)"
     );
+    document.getElementById("os13OnlyLabel").textContent = t("os13OnlyLabel", "AXIS OS 13 only");
+    document.getElementById("dlpuOnlyLabel").textContent = t("dlpuOnlyLabel", "Deep learning (DLPU) only");
     document.getElementById("summaryHeading").textContent = t("summaryHeading", "Match details");
     document.getElementById("resultsHeading").textContent = t("resultsHeading", "Matching Axis models");
     document.getElementById("stripeHint").textContent = t("stripeHint", "Scroll sideways to browse →");
@@ -1012,7 +1051,11 @@
     let matches = CATALOG_ROWS.filter((r) => r.coverable != null && angle <= r.coverable);
 
     const csOnly = camstreamerOnly.checked;
+    // Both filter on a published verdict, so a model with no verdict is
+    // excluded rather than assumed - the same asymmetry as the badges.
     if (csOnly) matches = matches.filter((r) => r.camstreamerSupported);
+    if (os13Only.checked) matches = matches.filter((r) => r.life.os13 === true);
+    if (dlpuOnly.checked) matches = matches.filter((r) => r.life.compute === "DLPU");
 
     const priceOf = (r) => r.entry.msrp_eur ?? r.entry.msrp ?? Infinity;
     // "Excess" drives the tightest-fit ranking. A PTZ's excess is measured
@@ -1079,6 +1122,22 @@
         ? `<span class="badge cs">${t("csSupported", "✅ CamStreamer supported")}</span>`
         : "";
       const groupBadge = r.entry.group ? `<span class="badge plain">${r.entry.group}</span>` : "";
+      const os13Badge =
+        r.life.os13 === true
+          ? `<span class="badge os13 yes" title="${escAttr(
+              t("os13YesTitle", "Axis lists this model for AXIS OS 13") +
+              (r.life.os13Entry && r.life.os13Entry.e ? " - support until " + r.life.os13Entry.e : "")
+            )}">OS13 \u2705</span>`
+          : r.life.os13 === false
+          ? `<span class="badge os13 no" title="${escAttr(t("os13NoTitle", "This model will not receive AXIS OS 13"))}">OS13 \uD83D\uDEAB</span>`
+          : "";
+      const computeBadge = r.life.compute
+        ? `<span class="badge compute ${r.life.compute.toLowerCase()}" title="${escAttr(
+            r.life.compute === "DLPU"
+              ? t("dlpuTitle", "Deep learning processing unit - runs deep-learning analytics on the camera")
+              : t("mlpuTitle", "Machine learning processing unit - on-camera analytics, but not the deep-learning class")
+          )}">${r.life.compute}</span>`
+        : "";
       // Camera-class badges. A PTZ that only reaches the required angle by
       // panning says so outright - it can point anywhere in the cone but only
       // watches one slice at a time, which is a materially different answer to
@@ -1128,13 +1187,18 @@
         </div>
         <a class="model" data-model="${escAttr(r.modelKey)}"${hrefAttr}${titleAttr}
            target="_blank" rel="noopener noreferrer">${r.modelKey}${
-          r.entry.variant ? `<span class="variant">${r.entry.variant}</span>` : ""
+          // Always rendered, empty or not: .variant is a reserved line (see
+          // fov-map.css) so the FOV row and everything under it sit at the
+          // same height on every card, whether or not the model has a
+          // variant. Cards with no variant used to pull their whole middle
+          // up by one line against their neighbours.
+          `<span class="variant">${r.entry.variant || ""}</span>`
         }</a>
         <div class="spec-row">
           <span>${t("specFov", "FOV")}</span>
           <span class="spec-val">${r.fov.min}–${r.fov.max}°</span>
         </div>
-        <div class="badges">${classBadge}${multiBadge}${csBadge}${groupBadge}${partBadge}</div>
+        <div class="badges">${classBadge}${multiBadge}${os13Badge}${computeBadge}${csBadge}${groupBadge}${partBadge}</div>
       `;
       resultsTrack.appendChild(card);
       const thumb = card.querySelector(".card-thumb");

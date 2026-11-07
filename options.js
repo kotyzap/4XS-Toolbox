@@ -11,8 +11,8 @@
   // apply on this standalone options page).
   // ---------------------------------------------------------------------
   const JA = {
-    headerTitle: "4XS Toolbox — 月次価格更新",
-    headerSubtitle: "毎月AXIS Price List(.xls)をドロップすると、EURおよびFX換算のUSD/JPY価格を更新できます — 再インストール不要です。",
+    headerTitle: "4XS Toolbox — 設定",
+    headerSubtitle: "axis.com で表示される内容と、価格の取得元の設定です。",
     currentStatusHeading: "現在の状態",
     favoritesHeading: "🧡 お気に入り",
     favoritesEmpty: "お気に入りはまだありません — axis.com上のカメラの♡をクリックしてください。",
@@ -103,9 +103,9 @@
   // ---------------------------------------------------------------------
   const BASIC_TRANSLATIONS = {
     cs: {
-      headerTitle: "4XS Toolbox — Měsíční aktualizace cen",
+      headerTitle: "4XS Toolbox — Nastavení",
       headerSubtitle:
-        "Každý měsíc přetáhněte ceník AXIS Price List (.xls) pro aktualizaci cen v EUR a z nich odvozených cen v USD/JPY podle kurzu — bez nutnosti přeinstalace.",
+        "Co rozšíření zobrazuje na axis.com a odkud bere ceny.",
       currentStatusHeading: "Aktuální stav",
       favoritesHeading: "🧡 Oblíbené",
       kofiHeading: "☕ Podpořte toto rozšíření",
@@ -140,9 +140,9 @@
         "Vše se zpracovává lokálně ve vašem prohlížeči. Soubor s cenami se analyzuje pouze na této stránce a nikdy neopustí váš počítač. Jediný síťový požadavek, který tato stránka provádí, je dotaz na kurz měn (EUR/USD, případně EUR/JPY) na api.frankfurter.dev (referenční kurzy ECB, bez API klíče, bez odesílání dat o kamerách či cenách). Pokud se dotaz nezdaří, můžete dnešní kurz(y) zadat ručně.",
     },
     es: {
-      headerTitle: "4XS Toolbox — Actualización mensual de precios",
+      headerTitle: "4XS Toolbox — Ajustes",
       headerSubtitle:
-        "Suelta la lista de precios AXIS (.xls) cada mes para actualizar los precios en EUR y los precios en USD/JPY derivados del tipo de cambio — sin necesidad de reinstalar.",
+        "Lo que la extensión muestra en axis.com y de dónde proceden sus precios.",
       currentStatusHeading: "Estado actual",
       favoritesHeading: "🧡 Favoritos",
       kofiHeading: "☕ Apoya esta extensión",
@@ -177,9 +177,9 @@
         "Todo se procesa localmente en tu navegador. El archivo de precios se analiza solo en esta página y nunca sale de tu equipo. La única solicitud de red que hace esta página es una consulta del tipo de cambio (EUR/USD, y EUR/JPY si es necesario) a api.frankfurter.dev (tipos de referencia del BCE, sin clave de API, sin enviar datos de cámaras ni de precios). Si esa consulta falla, puedes introducir el/los tipo(s) de hoy manualmente.",
     },
     de: {
-      headerTitle: "4XS Toolbox — Monatliches Preisupdate",
+      headerTitle: "4XS Toolbox — Einstellungen",
       headerSubtitle:
-        "Jeden Monat die AXIS-Preisliste (.xls) hier ablegen, um EUR- und daraus abgeleitete USD/JPY-Preise zu aktualisieren — keine Neuinstallation nötig.",
+        "Was die Erweiterung auf axis.com anzeigt und woher ihre Preise stammen.",
       currentStatusHeading: "Aktueller Status",
       favoritesHeading: "🧡 Favoriten",
       kofiHeading: "☕ Diese Erweiterung unterstützen",
@@ -214,9 +214,9 @@
         "Alles läuft lokal in Ihrem Browser. Die Preisdatei wird nur auf dieser Seite analysiert und verlässt niemals Ihr Gerät. Die einzige Netzwerkanfrage dieser Seite ist eine Wechselkursabfrage (EUR/USD, bei Bedarf EUR/JPY) an api.frankfurter.dev (EZB-Referenzkurse, kein API-Schlüssel, keine Kamera- oder Preisdaten werden gesendet). Falls diese Abfrage fehlschlägt, können Sie die heutigen Kurse manuell eingeben.",
     },
     fr: {
-      headerTitle: "4XS Toolbox — Mise à jour mensuelle des prix",
+      headerTitle: "4XS Toolbox — Paramètres",
       headerSubtitle:
-        "Déposez la liste de prix AXIS (.xls) chaque mois pour actualiser les prix en EUR et les prix en USD/JPY dérivés du taux de change — sans réinstallation nécessaire.",
+        "Ce que l’extension affiche sur axis.com et d’où proviennent ses prix.",
       currentStatusHeading: "État actuel",
       favoritesHeading: "🧡 Favoris",
       kofiHeading: "☕ Soutenir cette extension",
@@ -251,8 +251,8 @@
         "Tout est traité localement dans votre navigateur. Le fichier de prix n'est analysé que sur cette page et ne quitte jamais votre ordinateur. La seule requête réseau effectuée par cette page est une consultation du taux de change (EUR/USD, et EUR/JPY si nécessaire) auprès d'api.frankfurter.dev (taux de référence BCE, sans clé API, aucune donnée caméra ou tarifaire envoyée). Si cette consultation échoue, vous pouvez saisir le(s) taux du jour manuellement.",
     },
     ko: {
-      headerTitle: "4XS Toolbox — 월간 가격 업데이트",
-      headerSubtitle: "매달 AXIS 가격표(.xls)를 드롭하면 EUR 가격과 환율 기반 USD/JPY 가격이 갱신됩니다 — 재설치가 필요 없습니다.",
+      headerTitle: "4XS Toolbox — 설정",
+      headerSubtitle: "axis.com에 표시되는 내용과 가격의 출처를 설정합니다.",
       currentStatusHeading: "현재 상태",
       favoritesHeading: "🧡 즐겨찾기",
       kofiHeading: "☕ 이 확장 프로그램 후원하기",
@@ -286,8 +286,8 @@
         "모든 처리는 브라우저에서 로컬로 이루어집니다. 가격 파일은 이 페이지에서만 분석되며 사용자의 기기를 벗어나지 않습니다. 이 페이지가 수행하는 유일한 네트워크 요청은 api.frankfurter.dev(ECB 참조 환율, API 키 없음, 카메라나 가격 데이터 전송 없음)에 대한 환율 조회(EUR/USD, 필요 시 EUR/JPY)입니다. 조회가 실패하면 오늘의 환율을 직접 입력할 수 있습니다.",
     },
     zh: {
-      headerTitle: "4XS Toolbox — 每月价格更新",
-      headerSubtitle: "每月拖入 AXIS 价格表(.xls)以刷新欧元价格及基于汇率换算的美元/日元价格 — 无需重新安装。",
+      headerTitle: "4XS Toolbox — 设置",
+      headerSubtitle: "扩展在 axis.com 上显示的内容，以及价格的来源。",
       currentStatusHeading: "当前状态",
       favoritesHeading: "🧡 收藏",
       kofiHeading: "☕ 支持这个扩展",
@@ -321,9 +321,9 @@
         "所有处理均在您的浏览器本地完成。价格文件仅在此页面解析，绝不会离开您的设备。此页面发出的唯一网络请求是向 api.frankfurter.dev 查询汇率(EUR/USD，如需要则包括 EUR/JPY)(欧洲央行参考汇率，无需 API 密钥，不发送任何摄像机或价格数据)。如果该查询失败，您可以手动输入当日汇率。",
     },
     sv: {
-      headerTitle: "4XS Toolbox — Månatlig prisuppdatering",
+      headerTitle: "4XS Toolbox — Inställningar",
       headerSubtitle:
-        "Släpp AXIS Price List (.xls) varje månad för att uppdatera EUR-priser och växelkursbaserade USD/JPY-priser — ingen ominstallation behövs.",
+        "Vad tillägget visar på axis.com och var priserna kommer ifrån.",
       currentStatusHeading: "Aktuell status",
       favoritesHeading: "🧡 Favoriter",
       kofiHeading: "☕ Stötta det här tillägget",
@@ -358,9 +358,9 @@
         "Allt körs lokalt i din webbläsare. Prisfilen analyseras endast på den här sidan och lämnar aldrig din dator. Den enda nätverksförfrågan den här sidan gör är en växelkursförfrågan (EUR/USD, och EUR/JPY vid behov) till api.frankfurter.dev (ECB:s referenskurser, ingen API-nyckel, ingen kamera- eller prisdata skickas). Om förfrågan misslyckas kan du ange dagens kurs(er) manuellt.",
     },
     uk: {
-      headerTitle: "4XS Toolbox — Щомісячне оновлення цін",
+      headerTitle: "4XS Toolbox — Налаштування",
       headerSubtitle:
-        "Щомісяця перетягуйте прайс-лист AXIS (.xls), щоб оновити ціни в EUR і похідні від курсу ціни в USD/JPY — перевстановлення не потрібне.",
+        "Що розширення показує на axis.com і звідки бере ціни.",
       currentStatusHeading: "Поточний стан",
       favoritesHeading: "🧡 Обране",
       kofiHeading: "☕ Підтримати це розширення",
@@ -395,9 +395,9 @@
         "Усе обробляється локально у вашому браузері. Файл цін аналізується лише на цій сторінці й ніколи не залишає ваш пристрій. Єдиний мережевий запит, який робить ця сторінка, - це запит курсу обміну (EUR/USD, і за потреби EUR/JPY) до api.frankfurter.dev (референтні курси ЄЦБ, без API-ключа, без надсилання даних про камери чи ціни). Якщо цей запит не вдасться, ви можете ввести сьогоднішній курс(и) вручну.",
     },
     ar: {
-      headerTitle: "4XS Toolbox — تحديث الأسعار الشهري",
+      headerTitle: "4XS Toolbox — الإعدادات",
       headerSubtitle:
-        "أفلت قائمة أسعار AXIS (.xls) كل شهر لتحديث أسعار اليورو والأسعار المشتقة من سعر الصرف بالدولار الأمريكي/الين الياباني — دون الحاجة لإعادة التثبيت.",
+        "ما يعرضه الملحق على axis.com ومصدر الأسعار.",
       currentStatusHeading: "الحالة الحالية",
       favoritesHeading: "🧡 المفضلة",
       kofiHeading: "☕ ادعم هذا الامتداد",
@@ -431,9 +431,9 @@
         "تتم معالجة كل شيء محليًا في متصفحك. يُحلَّل ملف الأسعار في هذه الصفحة فقط ولا يغادر جهازك أبدًا. الطلب الشبكي الوحيد الذي تجريه هذه الصفحة هو استعلام سعر الصرف (EUR/USD، وEUR/JPY عند الحاجة) إلى api.frankfurter.dev (أسعار الصرف المرجعية للبنك المركزي الأوروبي، دون مفتاح API، ودون إرسال بيانات كاميرات أو أسعار). إذا فشل هذا الاستعلام، يمكنك إدخال سعر (أسعار) اليوم يدويًا.",
     },
     nl: {
-      headerTitle: "4XS Toolbox — Maandelijkse prijsupdate",
+      headerTitle: "4XS Toolbox — Instellingen",
       headerSubtitle:
-        "Sleep elke maand de AXIS-prijslijst (.xls) hierheen om EUR- en via wisselkoers afgeleide USD/JPY-prijzen bij te werken — geen herinstallatie nodig.",
+        "Wat de extensie op axis.com laat zien en waar de prijzen vandaan komen.",
       currentStatusHeading: "Huidige status",
       favoritesHeading: "🧡 Favorieten",
       kofiHeading: "☕ Steun deze extensie",
@@ -1424,10 +1424,10 @@
   // live parse/apply state - applied once at startup and again whenever
   // isJapanese changes later.
   function applyStaticI18nLabels() {
-    document.getElementById("headerTitle").textContent = t("headerTitle", "4XS Toolbox — Monthly price update");
+    document.getElementById("headerTitle").textContent = t("headerTitle", "4XS Toolbox — Settings");
     document.getElementById("headerSubtitle").textContent = t(
       "headerSubtitle",
-      "Drop the AXIS Price List (.xls) each month to refresh EUR and FX-derived USD/JPY prices — no reinstall needed."
+      "What the extension shows on axis.com, and where its prices come from."
     );
     document.getElementById("currentStatusHeading").textContent = t("currentStatusHeading", "Current status");
     document.getElementById("favoritesHeading").textContent = t("favoritesHeading", "🧡 Favorites");
@@ -1506,4 +1506,270 @@
   if (typeof AxisI18N !== "undefined") {
     AxisI18N.onLanguageChange(applyStaticI18nLabels);
   }
+
+  // ---------------------------------------------------------------------
+  // Settings hub.
+  //
+  // Every control writes the same chrome.storage.local key the popup drawer
+  // and the on-page filter panel already watch, so the three surfaces stay
+  // in step without talking to each other. Nothing here is a new source of
+  // truth - this page is just a third, roomier view of the same keys.
+  //
+  // "Chipset" moved out of axis.com's localStorage for exactly this reason:
+  // an extension page cannot read that origin. content.js migrates the old
+  // axisChipsetsHiddenV1 value into axisChipsetsHidden once, then follows it.
+  // ---------------------------------------------------------------------
+  const KEY_CHIPSETS_HIDDEN = "axisChipsetsHidden";
+  const KEY_OS13 = "axisShowOs13";
+  const KEY_COMPUTE = "axisShowCompute";
+  const KEY_CURRENCY = "axisCurrency";
+  const KEY_CURRENCY_BEFORE_OFF = "axisCurrencyBeforeOff";
+  const KEY_LANG = "axisPopupLang";
+
+  const LANGS = [
+    ["", "Auto (browser)"], ["en", "English"], ["cs", "Čeština"], ["de", "Deutsch"],
+    ["es", "Español"], ["fr", "Français"], ["nl", "Nederlands"], ["sv", "Svenska"],
+    ["uk", "Українська"], ["ar", "العربية"], ["ja", "日本語"], ["ko", "한국어"],
+    ["zh", "中文"],
+  ];
+
+  function initSettingsHub() {
+    const el = (id) => document.getElementById(id);
+    const chipset = el("showChipset"), os13 = el("showOs13");
+    const compute = el("showCompute"), prices = el("showPrices");
+    const langSel = el("langSelect"), curRow = el("currencyRow");
+    if (!chipset || !chrome.storage || !chrome.storage.local) return;
+
+    LANGS.forEach(([code, label]) => {
+      const o = document.createElement("option");
+      o.value = code;
+      o.textContent = label;
+      langSel.appendChild(o);
+    });
+
+    const paintCurrency = (cur) => {
+      curRow.querySelectorAll("button").forEach((b) => {
+        b.classList.toggle("active", b.dataset.cur === cur);
+      });
+    };
+
+    chrome.storage.local.get(
+      [KEY_CHIPSETS_HIDDEN, KEY_OS13, KEY_COMPUTE, KEY_CURRENCY, KEY_LANG],
+      (r) => {
+        // Absent means never toggled, which is ON for every badge.
+        chipset.checked = r[KEY_CHIPSETS_HIDDEN] !== true;
+        os13.checked = r[KEY_OS13] !== false;
+        compute.checked = r[KEY_COMPUTE] !== false;
+        prices.checked = r[KEY_CURRENCY] !== "OFF";
+        langSel.value = r[KEY_LANG] || "";
+        paintCurrency(r[KEY_CURRENCY] === "OFF" ? null : r[KEY_CURRENCY] || "EUR");
+      }
+    );
+
+    chipset.addEventListener("change", () =>
+      chrome.storage.local.set({ [KEY_CHIPSETS_HIDDEN]: !chipset.checked }));
+    os13.addEventListener("change", () =>
+      chrome.storage.local.set({ [KEY_OS13]: os13.checked }));
+    compute.addEventListener("change", () =>
+      chrome.storage.local.set({ [KEY_COMPUTE]: compute.checked }));
+
+    // Prices reuse the existing currency "OFF" state rather than adding a
+    // competing flag; the previous currency is remembered so re-enabling
+    // restores it instead of guessing.
+    prices.addEventListener("change", () => {
+      if (!prices.checked) {
+        chrome.storage.local.get([KEY_CURRENCY], (r) => {
+          if (r[KEY_CURRENCY] && r[KEY_CURRENCY] !== "OFF") {
+            chrome.storage.local.set({ [KEY_CURRENCY_BEFORE_OFF]: r[KEY_CURRENCY] });
+          }
+          chrome.storage.local.set({ [KEY_CURRENCY]: "OFF" }, () => paintCurrency(null));
+        });
+      } else {
+        chrome.storage.local.get([KEY_CURRENCY_BEFORE_OFF], (r) => {
+          const restored = r[KEY_CURRENCY_BEFORE_OFF] || "EUR";
+          chrome.storage.local.set({ [KEY_CURRENCY]: restored }, () => paintCurrency(restored));
+        });
+      }
+    });
+
+    curRow.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-cur]");
+      if (!b) return;
+      chrome.storage.local.set({ [KEY_CURRENCY]: b.dataset.cur }, () => {
+        prices.checked = true;
+        paintCurrency(b.dataset.cur);
+      });
+    });
+
+    langSel.addEventListener("change", () => {
+      if (langSel.value) chrome.storage.local.set({ [KEY_LANG]: langSel.value });
+      else chrome.storage.local.remove(KEY_LANG);
+    });
+
+    renderPriceSource();
+  }
+
+  // Which pricelist the extension is actually using. A file the user dropped
+  // here wins outright over anything synced - that is the whole point of the
+  // upload for a reseller quoting their own margins, and the file never
+  // leaves the browser.
+  function renderPriceSource() {
+    const out = document.getElementById("priceSourceStatus");
+    if (!out) return;
+    chrome.storage.local.get(["catalogOverride"], (r) => {
+      const ov = r && r.catalogOverride;
+      if (ov) {
+        const when = ov.updatedAt ? new Date(ov.updatedAt).toLocaleDateString() : "";
+        const n = ov.overrides ? Object.keys(ov.overrides).length : 0;
+        out.textContent =
+          "Your own pricelist" + (when ? " (uploaded " + when + ")" : "") +
+          (n ? " - " + n + " SKUs" : "") +
+          ". It stays on this computer and overrides anything synced.";
+      } else {
+        out.textContent =
+          "Bundled Axis MSRP. Drop a pricelist below to use your own instead - " +
+          "it is parsed here in the browser and never uploaded.";
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSettingsHub);
+  } else {
+    initSettingsHub();
+  }
+
+  // ------------------------------------------------------------------
+  // Data & updates. Moved here from the popup's gear drawer so everything
+  // that reaches out to a network lives on one page; the popup's gear now
+  // opens this page instead of expanding a drawer over the catalogue.
+  //
+  // Deliberately written against chrome.storage + the background worker
+  // rather than lifted out of popup.js: in the popup these renderers were
+  // interleaved with the OS 13 *display* toggle, which stays there. Copying
+  // the tangle across would have moved code that does not belong here.
+  // ------------------------------------------------------------------
+  function fmtWhen(ts) {
+    if (!ts) return t("never", "never");
+    const diffMin = Math.round((Date.now() - ts) / 60000);
+    if (diffMin < 1) return t("justNow", "just now");
+    if (diffMin < 60) return t("minAgo", diffMin + " min ago", diffMin);
+    const diffH = Math.round(diffMin / 60);
+    if (diffH < 48) return t("hAgo", diffH + " h ago", diffH);
+    const days = Math.round(diffH / 24);
+    return t("daysAgo", days + " days ago", days);
+  }
+
+  // These read exactly the keys the background worker writes and reuse the
+  // popup's own i18n keys, so all 11 translations keep working unchanged.
+  function statusEl(id) { return document.getElementById(id); }
+
+  function renderFxStatus() {
+    const el = statusEl("fxStatus");
+    if (!el) return;
+    if (!chrome.storage || !chrome.storage.local) { el.textContent = t("unavailable", "unavailable"); return; }
+    chrome.storage.local.get(["fxRates", "fxUpdatedAt", "fxLastError"], (r) => {
+      if (r.fxLastError && !r.fxRates) {
+        el.classList.add("error");
+        el.textContent = t("lastUpdateFailed", "Last update failed: " + r.fxLastError, r.fxLastError);
+      } else if (r.fxRates) {
+        el.classList.remove("error");
+        const when = fmtWhen(r.fxUpdatedAt);
+        const gbpPart = typeof r.fxRates.gbp === "number" ? " / £" + r.fxRates.gbp : "";
+        el.textContent = t(
+          "fxStatusOk",
+          "1 EUR ≈ $" + r.fxRates.usd + gbpPart + " / ¥" + r.fxRates.jpy + " · updated " + when,
+          r.fxRates.usd, r.fxRates.jpy, when
+        );
+      } else {
+        el.classList.remove("error");
+        el.textContent = t("notFetchedYet", "not fetched yet");
+      }
+    });
+  }
+
+  function renderChipsetStatus() {
+    const el = statusEl("chipsetStatus");
+    if (!el) return;
+    if (!chrome.storage || !chrome.storage.local) { el.textContent = t("unavailable", "unavailable"); return; }
+    chrome.storage.local.get(["chipsetModelCount", "chipsetUpdatedAt", "chipsetLastError"], (r) => {
+      if (r.chipsetLastError) {
+        el.classList.add("error");
+        el.textContent = t("lastUpdateFailed", "Last update failed: " + r.chipsetLastError, r.chipsetLastError);
+        return;
+      }
+      el.classList.remove("error");
+      const count = r.chipsetModelCount || 0;
+      const when = fmtWhen(r.chipsetUpdatedAt);
+      el.textContent = t("chipsetStatusOk", count + " models · updated " + when, count, when);
+    });
+  }
+
+  function renderOs13Status() {
+    const el = statusEl("os13Status");
+    if (!el) return;
+    if (!chrome.storage || !chrome.storage.local) { el.textContent = t("unavailable", "unavailable"); return; }
+    chrome.storage.local.get(["os13CheckedCount", "os13UpdatedAt", "os13LastError"], (r) => {
+      if (r.os13LastError) {
+        el.classList.add("error");
+        el.textContent = t("lastUpdateFailed", "Last update failed: " + r.os13LastError, r.os13LastError);
+        return;
+      }
+      el.classList.remove("error");
+      if (!r.os13UpdatedAt) {
+        // Never refreshed: say what the badges are running on rather than
+        // "never", which reads as though nothing works.
+        el.textContent = t("os13StatusBundled", "Using the bundled snapshot. Models with no confirmed verdict get no badge.");
+        return;
+      }
+      const n = r.os13CheckedCount || 0;
+      const when = fmtWhen(r.os13UpdatedAt);
+      el.textContent = t("os13StatusOk", n + " models re-checked · updated " + when, n, when);
+    });
+  }
+
+  // Each button just asks the background worker to do the fetch and then
+  // re-reads the status it wrote - no network code on this page.
+  function wireRefresh(btnId, msgType, rerender) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      const label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = t("updating", "Updating…");
+      chrome.runtime.sendMessage({ type: msgType }, (resp) => {
+        btn.disabled = false;
+        btn.textContent = label;
+        rerender();
+        if (resp && !resp.ok) {
+          const el = btn.parentElement.querySelector(".data-status");
+          if (el) { el.classList.add("error"); el.textContent = String(resp.error || "failed"); }
+        }
+      });
+    });
+  }
+
+  wireRefresh("refreshFx", "REFRESH_FX", renderFxStatus);
+  wireRefresh("refreshChipsets", "REFRESH_CHIPSETS", renderChipsetStatus);
+  wireRefresh("refreshOs13", "REFRESH_OS13", renderOs13Status);
+  renderFxStatus();
+  renderChipsetStatus();
+  renderOs13Status();
+
+  const jumpBtn = document.getElementById("jumpToUpload");
+  if (jumpBtn) {
+    jumpBtn.addEventListener("click", () => {
+      const z = document.getElementById("dropZone") || document.getElementById("mappingCard");
+      if (z) z.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+
+  const footerTextEl = document.getElementById("footerText");
+  if (footerTextEl) {
+    footerTextEl.textContent = t(
+      "footerDisclaimer",
+      "Prices are Axis MSRP (list price), not street price. EUR is from the AXIS Price List; USD for those same products is calculated from the EUR price at the rate in effect when that list was generated, so treat it as an estimate. JPY and GBP are converted live from the EUR price using ECB reference rates (via api.frankfurter.dev). Chipset info is sourced from CamStreamer's published app-compatibility list, not Axis."
+    );
+  }
+
 })();

@@ -111,7 +111,8 @@
   padding: 4px 14px;
 }
 
-.axis-product-series-breadcrumb-item .axis-product-chipset-badge {
+.axis-product-series-breadcrumb-item .axis-product-chipset-badge,
+.axis-product-series-breadcrumb-item .axis-product-os13-badge {
   font-size: 14px;
   padding: 4px 14px;
 }
@@ -178,4 +179,51 @@
 .axis-product-compare-badge {
   font-size: 12px;
   padding: 3px 10px;
+}
+
+/* AXIS OS 13 verdict badge - same shape as .axis-product-chipset-badge so
+   the two read as one family, colour-coded instead of black: green = the
+   hardware gets AXIS OS 13, red = it never will. Models whose verdict is
+   unknown get no badge at all (see products-content.js), so an absent badge
+   never means "no OS 13". */
+.axis-product-os13-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+}
+.axis-product-os13-badge.is-os13 { background-color: #1f7a3d; }
+.axis-product-os13-badge.is-no-os13 { background-color: #a32020; }
+
+/* Compute-capability badge (DLPU / MLPU / none), from Axis's Q4 2026
+   comparison tables. Same shape as the chipset and OS 13 badges, its own
+   colours so three badges in a row stay tellable apart at a glance.
+   Deliberately NOT added to the comparison table: that table already carries
+   Axis's own "Analytics compute capability" row on most series pages. */
+.axis-product-compute-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+}
+.axis-product-compute-badge.is-dlpu { background-color: #1d4ed8; }
+.axis-product-compute-badge.is-mlpu { background-color: #7c3aed; }
+.axis-product-compute-badge.is-nocompute { background-color: #6b7280; }
+.axis-product-series-breadcrumb-item .axis-product-compute-badge {
+  font-size: 14px;
+  padding: 4px 14px;
 }

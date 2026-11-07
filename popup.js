@@ -47,6 +47,11 @@
       currencyOffTitle: "Skrýt všechny ceny — čipset a filtr úhlu záběru zůstanou zachovány",
       fxLabel: "Kurzy (EUR→USD/GBP/JPY)",
       chipsetLabel: "Data o čipsetech (CamStreamer)",
+      os13Label: "Štítky AXIS OS 13 na axis.com",
+      os13On: "Zap.",
+      os13Off: "Vyp.",
+      os13StatusBundled: "Používá se přibalený snímek. Modely bez potvrzeného verdiktu štítek nedostanou.",
+      os13StatusOk: (n, when) => `${n} modelů ověřeno · aktualizováno ${when}`,
       update: "Aktualizovat",
       updating: "Aktualizuji…",
       searchPlaceholder: "Hledat model nebo objednací číslo…",
@@ -899,7 +904,14 @@
   // invisible, not a value the slider can be dragged to.
   const ANGLE_FLOOR = 1;
   function angleFilterOk(it) {
-    const required = mapAngleRequired == null ? ANGLE_FLOOR : mapAngleRequired;
+    // No requirement set (the slider sits at 0, which stores null) means no
+    // FoV filtering at all. Falling through to ANGLE_FLOOR here dropped
+    // every model with no curated FoV entry - roughly half the catalogue,
+    // all the audio, recorders, access control and 2N lines included - from
+    // a list whose own header advertises them as loaded. fov-data.js's
+    // header states the rule: a model with no entry passes unconditionally.
+    if (mapAngleRequired == null) return true;
+    const required = mapAngleRequired;
     const fov = fovFor(displayNameFor(it));
     if (!fov) return false;
     const cov = coverableAngle(fov, cameraClassOf(it.section, fov));
@@ -1055,17 +1067,17 @@
       if (it.msrp != null && fxRates && typeof fxRates.usd === "number") {
         return fmt(it.msrp / fxRates.usd, "EUR", false, true);
       }
-      return t("noEurData", "— (no EUR data)");
+      return t("noEurData", "— no EUR");
     }
     if (currentCurrency === "JPY") {
       return it.msrp != null && fxRates && typeof fxRates.jpy === "number" && typeof fxRates.usd === "number"
         ? fmt(it.msrp * (fxRates.jpy / fxRates.usd), "JPY", false, true)
-        : t("noRateYet", "— (no rate yet)");
+        : t("noRateYet", "— no rate");
     }
     if (currentCurrency === "GBP") {
       return it.msrp != null && fxRates && typeof fxRates.gbp === "number" && typeof fxRates.usd === "number"
         ? fmt(it.msrp * (fxRates.gbp / fxRates.usd), "GBP", false, true)
-        : t("noRateYet", "— (no rate yet)");
+        : t("noRateYet", "— no rate");
     }
     return fmt(it.msrp, "USD", it.msrp_exact);
   }
@@ -1101,12 +1113,195 @@
       '>' + text + '</span>';
   }
 
+  // ---------------------------------------------------------------------
+  // AXIS OS 13 verdict, same data and same rules as the axis.com content
+  // scripts (os13-data.js, refreshed weekly by background.js into
+  // chrome.storage.local.os13Data).
+  //
+  // Exact-match plus a whitelisted trim: an Axis model code always carries a
+  // digit, so a trailing token without one is decoration. A Mk marker is
+  // never trimmed - the M1137 and the M1137 Mk II are different products
+  // with different answers, and a wrong "will upgrade" costs real money
+  // (Preflight rule A9). Anything unresolved or "unknown" gets no pill.
+  // ---------------------------------------------------------------------
+  // Declared here, not down with the toggle button: chipsetBadgeHtml() reads
+  // showOs13 during the very first render, which happens before that block
+  // runs - a `let` down there is still in its temporal dead zone and throws.
+  const OS13_KEY = "axisShowOs13";
+  let showOs13 = true;
+  const COMPUTE_KEY = "axisShowCompute";
+  let showCompute = true;
+  // Stored inverted ("hidden"), to match the on-page filter panel that has
+  // written this key since long before the Settings page existed.
+  const CHIPSETS_HIDDEN_KEY = "axisChipsetsHidden";
+  let showChipset = true;
+  const COMPUTE = (typeof COMPUTE_DATA !== "undefined" && COMPUTE_DATA.models) || {};
+  const computeIndex = new Map();
+  for (const key of Object.keys(COMPUTE)) computeIndex.set(normalizeBare(key), COMPUTE[key]);
+  let OS13 = (typeof OS13_DATA !== "undefined" && OS13_DATA.models) || {};
+  let os13Index = new Map();
+  function rebuildOs13Index() {
+    os13Index = new Map();
+    for (const key of Object.keys(OS13)) os13Index.set(normalizeBare(key), OS13[key]);
+  }
+  rebuildOs13Index();
+
+  const OS13_MK_TOKEN = /^(?:MK|II|III|IV)$/;
+  const OS13_VARIANT_TOKEN = /^(?:\d+(?:\.\d+)?|\d+P|\d+HZ|M12|RJ45|I-CS|4K)$/;
+  function os13TrimmableToken(tok) {
+    if (OS13_MK_TOKEN.test(tok)) return false;
+    if (OS13_VARIANT_TOKEN.test(tok)) return true;
+    return !/\d/.test(tok);
+  }
+  function os13Lookup(displayName) {
+    const norm = normalizeBare(displayName);
+    let entry = os13Index.get(norm);
+    if (!entry) {
+      const demarined = norm.replace(/-S([A-Z]+)\b/, "-$1");
+      if (demarined !== norm) entry = os13Index.get(demarined);
+    }
+    if (!entry) {
+      const toks = norm.split(" ").filter(Boolean);
+      for (let i = toks.length - 1; i > 0 && !entry; i--) {
+        if (!toks.slice(i).every(os13TrimmableToken)) break;
+        entry = os13Index.get(toks.slice(0, i).join(" "));
+      }
+    }
+    return entry || null;
+  }
+  function os13For(displayName) {
+    const entry = os13Lookup(displayName);
+    return entry && entry.v !== "unknown" ? entry : null;
+  }
+  // Axis's own SoC ("ARTPEC-7") where CamStreamer only has a collapsed
+  // bucket ("ARTPEC-6/7"). Display only - chipsetFilterOk() still filters on
+  // the CamStreamer value, so the Filter panel is unaffected.
+  // Compute capability (DLPU / MLPU / none) - same name matching as os13.
+  function computeFor(displayName) {
+    const norm = normalizeBare(displayName);
+    let code = computeIndex.get(norm);
+    if (!code) {
+      const toks = norm.split(" ").filter(Boolean);
+      for (let i = toks.length - 1; i > 0 && !code; i--) {
+        if (!toks.slice(i).every(os13TrimmableToken)) break;
+        code = computeIndex.get(toks.slice(0, i).join(" "));
+      }
+    }
+    return code || null;
+  }
+
+  function exactSocFor(displayName) {
+    const entry = displayName ? os13Lookup(displayName) : null;
+    return (entry && entry.p) || null;
+  }
+
   // Chipset pill markup, shared with the FoV Map tab's list.
-  function chipsetBadgeHtml(model) {
+  // A label naming a RANGE rather than a chip ("ARTPEC-6/7") carries no
+  // chipset information - that set is exactly CAMSTREAMER_ACAPS_PRESET - so
+  // where Axis has not published the real SoC, show what we actually know.
+  function isChipsetGroupLabel(label) {
+    return label.indexOf("/") !== -1 || /\s\d-\d$/.test(label);
+  }
+
+  // Returns the chipset / OS 13 / compute pills for one model.
+  //
+  // Two layouts share this builder. The catalogue list wraps them in a
+  // .badges grid (grid=true), where DOM order is visual order. The FoV Map
+  // list still lays its single-line rows out with floats, which stack
+  // right-to-left, so it gets the same pills in reverse. Building one array
+  // in reading order and reversing for the float case keeps the two
+  // layouts from drifting apart.
+  function chipsetBadgeHtml(model, grid) {
     const chipset = chipsetFor(model);
-    if (!chipset) return "";
-    return '<span class="chipset">' + chipset +
-      (CAMSTREAMER_ACAPS_PRESET.includes(chipset) ? " \u2705" : "") + '</span>';
+    const exact = exactSocFor(model);
+    const parts = [];
+    let html = "";
+    if (showCompute) {
+      const code = computeFor(model);
+      if (code) {
+        const cls = code === "d" ? "dlpu" : code === "m" ? "mlpu" : "nope";
+        const txt = code === "d" ? "DLPU" : code === "m" ? "MLPU" : "NO DLPU";
+        const tip = code === "d"
+          ? "Deep learning processing unit - runs deep-learning models on the camera"
+          : code === "m"
+            ? "Machine learning processing unit - lighter than a DLPU"
+            : "No machine-learning compute unit on this camera";
+        html = '<span class="compute ' + cls + '" title="' +
+          escAttr(tip + " (Axis comparison tables, Q4 2026)") + '">' + txt + '</span>';
+      } else {
+        html = '<span class="compute none"></span>';
+      }
+      parts.push(html);
+    }
+    if (showOs13) {
+      const entry = os13For(model);
+      if (entry) {
+        const ok = entry.v === "os13";
+        const bits = [ok ? "AXIS OS 13 supported" : "No AXIS OS 13 for this hardware"];
+        if (entry.p) bits.push(entry.p);
+        if (entry.f) bits.push("newest build " + entry.f);
+        if (entry.e) bits.push("support until " + entry.e);
+        html = '<span class="os13 ' + (ok ? "yes" : "no") + '" title="' +
+          escAttr(bits.join(" - ")) + '">OS13 ' + (ok ? "\u2705" : "\uD83D\uDEAB") + '</span>';
+      } else {
+        html = '<span class="os13 none"></span>';
+      }
+      parts.push(html);
+    }
+    // A model with no chipset still has to hold the column open, exactly as
+    // ".os13.none" and ".compute.none" above do. Without the spacer, line 1
+    // lost its first item, the price slid left into the chipset's slot, and
+    // the OS 13 / compute pills had room to wrap up beside it instead of
+    // staying on line 2. Note this is NOT the same case as the badge being
+    // switched off in Settings: switched off, nothing is emitted at all and
+    // --badges-w shrinks so the rest legitimately close ranks to the left.
+    if (showChipset && !chipset) {
+      parts.push('<span class="chipset none"></span>');
+    }
+    if (showChipset && chipset) {
+      const acap = CAMSTREAMER_ACAPS_PRESET.includes(chipset);
+      const asSupport = !exact && acap && isChipsetGroupLabel(chipset);
+      const shown = exact || (asSupport ? "CamStreamer" : chipset);
+      const tip = exact
+        ? "System-on-chip (via Axis product data): " + exact
+        : asSupport
+          ? "Runs CamStreamer apps. Axis does not publish the exact chipset for this model; " +
+            "CamStreamer only groups it as " + chipset
+          : "Chipset (via CamStreamer app-compatibility data): " + chipset;
+      parts.push('<span class="chipset" title="' + escAttr(tip) + '">' + shown +
+        (acap ? " \u2705" : "") + '</span>');
+    }
+    // parts is [compute, os13, chipset]; reading order is the reverse.
+    return grid ? parts.reverse().join("") : parts.join("");
+  }
+
+  // The badge block is a fixed-width float so the pills line up down the
+  // list, which means its width has to follow whichever badges are switched
+  // on rather than always reserving room for all three. Widths here are the
+  // CSS pill widths plus the 4px flex gaps; the price always takes a line of
+  // its own below them, so it never enters this sum.
+  // Line 1 is the chipset and the price, line 2 the OS 13 and compute pills.
+  // The price sits at the right of line 1 at a bigger size, because it is the
+  // one value people scan the list for.
+  //
+  // The block is a fixed-width float - that is what lines the pills up from
+  // row to row - so its width has to be recomputed whenever the Settings
+  // switches change, or a switched-off badge would leave a hole where it
+  // used to be instead of letting the rest close up to the left. Widths are
+  // the CSS pill widths (measured headlessly against every label the three
+  // pill types can render) plus the flex gaps.
+  const BADGE_W = { chipset: 92, os13: 68, compute: 72, price: 96 };
+  const BADGE_GAP = 4;
+  function applyBadgeWidth() {
+    const join = (...ws) => {
+      const on = ws.filter(Boolean);
+      return on.length ? on.reduce((a, b) => a + b, 0) + BADGE_GAP * (on.length - 1) : 0;
+    };
+    const priceOn = !pricesHidden();
+    const line1 = join(showChipset && BADGE_W.chipset, priceOn && BADGE_W.price);
+    const line2 = join(showOs13 && BADGE_W.os13, showCompute && BADGE_W.compute);
+    document.documentElement.style.setProperty(
+      "--badges-w", Math.max(line1, line2, BADGE_W.price) + "px");
   }
 
   function render(items) {
@@ -1118,7 +1313,12 @@
       return;
     }
     const frag = document.createDocumentFragment();
-    items.slice(0, 60).forEach((it) => {
+    // No cap. The whole catalogue is a few hundred rows of light DOM, which
+    // the browser renders in tens of milliseconds - measured on the web
+    // build of this same list. A cap of 60 silently hid most of a list the
+    // header advertises as "N models / N SKUs loaded", and because the list
+    // is a plain scroller, scrolling could never reach the rest.
+    items.forEach((it) => {
       const row = document.createElement("div");
       const fav = isFav(it.model);
       row.className = fav ? "row favorited" : "row";
@@ -1128,8 +1328,12 @@
         '<span class="fav" title="' +
         t("favToggleTitle", "Favorite this camera - favorites sort to the top") +
         '">' + (fav ? "🧡" : "♡") + '</span>' +
-        (priceText !== null ? '<span class="price">' + priceText + '</span>' : '') +
-        chipsetBadgeHtml(it.model) +
+        // One floated 2x2 grid instead of four separate floats: the pills
+        // use the height these rows already have (model + meta is two lines)
+        // instead of eating the width the model name needs.
+        '<span class="badges">' + chipsetBadgeHtml(it.model, true) +
+        (priceText !== null ? '<span class="price">' + priceText + '</span>'
+          : pricesHidden() ? '' : '<span class="price none"></span>') + '</span>' +
         '<div class="model">' + copySpan(it.model, it.model) +
         (it.variant ? " — " + it.variant : "") + '</div>' +
         '<div class="meta">' + (it.part_number ? copySpan(it.part_number, skuOf(it)) : "") +
@@ -1209,7 +1413,7 @@
     }
 
     const frag = document.createDocumentFragment();
-    matches.slice(0, 60).forEach((it) => {
+    matches.forEach((it) => {
       const fav = isFav(it.model);
       const row = document.createElement("div");
       row.className = fav ? "row favorited" : "row";
@@ -1219,12 +1423,18 @@
         '<span class="fav" title="' +
         t("favToggleTitle", "Favorite this camera - favorites sort to the top") +
         '">' + (fav ? "🧡" : "♡") + "</span>" +
-        (priceText !== null ? '<span class="price">' + priceText + "</span>" : "") +
-        chipsetBadgeHtml(it.model) +
+        // Same floated 2x2 badge grid the catalogue rows use, for the same
+        // reason its own comment gives: four separate floats ate the width
+        // the model name needs, and this list was ellipsizing names down to
+        // "AXIS M11…" - the one field you actually read. The grid uses the
+        // row's height instead, which the SKU line below now provides.
+        '<span class="badges">' + chipsetBadgeHtml(it.model, true) +
+        (priceText !== null ? '<span class="price">' + priceText + '</span>'
+          : pricesHidden() ? '' : '<span class="price none"></span>') + '</span>' +
         '<div class="model">' + copySpan(it.model, it.model) +
-        (it.variant ? " — " + it.variant : "") +
-        (it.part_number ? " " + copySpan(it.part_number, skuOf(it), "sku") : "") +
-        "</div>";
+        (it.variant ? " — " + it.variant : "") + "</div>" +
+        '<div class="meta">' +
+        (it.part_number ? copySpan(it.part_number, skuOf(it)) : "") + "</div>";
       frag.appendChild(row);
     });
     fovMapResultsEl.innerHTML = "";
@@ -1733,7 +1943,14 @@
     return applySort(base.filter(angleFilterOk).filter(chipsetFilterOk), null);
   }
 
-  searchEl.addEventListener("input", () => render(search(searchEl.value)));
+  // Debounced, now that a keystroke re-renders the whole list rather than
+  // its first 60 rows. One frame's worth of delay is imperceptible on a
+  // pause and collapses a fast burst of keypresses into a single render.
+  let searchTimer = null;
+  searchEl.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => render(search(searchEl.value)), 120);
+  });
 
   // ---- Currency toggle (EUR default / USD / GBP / JPY / OFF = prices hidden) ----
   const usdBtn = document.getElementById("currencyUSD");
@@ -1749,39 +1966,16 @@
   const languageSectionEl = document.getElementById("languageSection");
   const footerTextEl = document.getElementById("footerText");
 
-  // ---- Advanced/info drawer: Currency, FX rates, the chipset-data update
-  // row, the monthly price-override link, and the footer disclaimer are all
-  // collapsed by default (see the body:not(.axis-advanced-visible) base CSS)
-  // and only shown once #advancedBtn is toggled on, so the popup opens
-  // compact and quick to scan. ----
+  // ---- Settings. The four data-update rows (FX, chipset, AXIS OS 13,
+  // pricelist upload) and the price disclaimer used to live in a drawer
+  // here; they are on the Settings page now, so the one place that reaches
+  // out to a network is also the one place that explains where the numbers
+  // come from. The gear opens it. ----
   const advancedBtn = document.getElementById("advancedBtn");
-  let advancedVisible = false;
-  function applyAdvancedVisibility() {
-    document.body.classList.toggle("axis-advanced-visible", advancedVisible);
-    if (chipsetSectionEl) chipsetSectionEl.style.display = "";
-    if (footerSectionEl) footerSectionEl.style.display = "";
-    if (currencySectionEl) currencySectionEl.style.display = "";
-    if (monthlySectionEl) monthlySectionEl.style.display = "";
-    if (languageSectionEl) languageSectionEl.style.display = "";
-    // The FX row stays hidden even in advanced mode once prices are off -
-    // it only exists to explain a EUR->USD/GBP/JPY conversion that isn't shown.
-    // Explicitly forcing "none" here (rather than leaving it to the base
-    // CSS) is what actually hides it in that case, since the base rule only
-    // fires while .axis-advanced-visible is absent.
-    if (fxSectionEl) fxSectionEl.style.display = advancedVisible && pricesHidden() ? "none" : "";
-    if (advancedBtn) advancedBtn.classList.toggle("active", advancedVisible);
-  }
-  advancedBtn.addEventListener("click", () => {
-    advancedVisible = !advancedVisible;
-    applyAdvancedVisibility();
-    if (chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ axisPopupAdvancedVisible: advancedVisible });
-    }
-  });
-  if (chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get("axisPopupAdvancedVisible", (r) => {
-      advancedVisible = !!r.axisPopupAdvancedVisible;
-      applyAdvancedVisibility();
+  if (advancedBtn) {
+    advancedBtn.addEventListener("click", () => {
+      if (chrome.runtime && chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+      else if (chrome.tabs) chrome.tabs.create({ url: chrome.runtime.getURL("options.html") });
     });
   }
 
@@ -1791,10 +1985,11 @@
   function applyStaticI18nLabels() {
     const languageLabelEl = document.getElementById("languageLabel");
     if (languageLabelEl) languageLabelEl.textContent = t("languageLabel", "Language");
-    document.getElementById("currencyLabel").textContent = t("currencyLabel", "Currency");
-    document.getElementById("fxLabel").textContent = t("fxLabel", "FX rates (EUR→USD/GBP/JPY)");
-    document.getElementById("chipsetLabel").textContent = t("chipsetLabel", "Chipset data (CamStreamer)");
-    document.getElementById("monthlyLabel").textContent = t("monthlyLabel", "UPLOAD .XLS PRICELIST");
+    const currencyLabelEl = document.getElementById("currencyLabel");
+    if (currencyLabelEl) currencyLabelEl.textContent = t("currencyLabel", "Currency");
+    // fxLabel / chipsetLabel / os13Label / monthlyLabel moved to the
+    // Settings page with their rows; options.js labels them there.
+    renderOs13Toggle();
     searchEl.placeholder = t("searchPlaceholder", "Search model or part number…");
     document.getElementById("fovMapBtn").title = t("fovMapBtnTitle", "Open the full-screen FOV Map tool");
     document.getElementById("fovMapBtn").textContent = t("fovMapBtnText", "⛶ Full Screen");
@@ -1816,13 +2011,15 @@
       "Only show cameras that can cover at least this many degrees - a PTZ's full pan range counts, not just its lens width. Same requirement drawing a cone on the map to the left sets."
     );
     document.getElementById("advancedBtn").title = t("advancedBtnTitle", "Show/hide currency, FX rates, chipset update info, monthly price updates, and the price disclaimer");
-    document.getElementById("settingsBtn").title = t("settingsBtnTitle", "Update monthly prices");
+    const settingsBtnEl = document.getElementById("settingsBtn");
+    if (settingsBtnEl) settingsBtnEl.title = t("settingsBtnTitle", "Update monthly prices");
     document.getElementById("themeToggle").title = t("themeToggleTitle", "Toggle light/dark theme");
     document.getElementById("kofiBtn").title = t("kofiBtnTitle", "Buy Pavel a coffee — support this extension");
-    offBtn.title = t("currencyOffTitle", "Hide all prices — keep chipset info and FOV filtering");
+    if (offBtn) offBtn.title = t("currencyOffTitle", "Hide all prices — keep chipset info and FOV filtering");
     // Idle-state button labels only - don't clobber "Updating…" mid-request.
-    if (!refreshBtn.disabled) refreshBtn.textContent = t("update", "Update");
-    if (!refreshFxBtn.disabled) refreshFxBtn.textContent = t("update", "Update");
+    // Both buttons moved to the Settings page; options.js labels them there.
+    if (refreshBtn && !refreshBtn.disabled) refreshBtn.textContent = t("update", "Update");
+    if (refreshFxBtn && !refreshFxBtn.disabled) refreshFxBtn.textContent = t("update", "Update");
     // Both Filter buttons' label + title; the popover itself is rebuilt
     // from scratch on every open, so it always picks the new language up.
     updateFilterButtons();
@@ -1869,27 +2066,22 @@
 
   function setCurrency(next, persist) {
     currentCurrency = next === "USD" || next === "GBP" || next === "JPY" || next === "OFF" ? next : "EUR";
-    usdBtn.classList.toggle("active", currentCurrency === "USD");
-    eurBtn.classList.toggle("active", currentCurrency === "EUR");
-    gbpBtn.classList.toggle("active", currentCurrency === "GBP");
-    jpyBtn.classList.toggle("active", currentCurrency === "JPY");
-    offBtn.classList.toggle("active", currentCurrency === "OFF");
-    // The FX-rate row only exists to explain the EUR→USD/GBP/JPY conversion,
-    // so it's noise once prices are hidden - applyAdvancedVisibility() folds
-    // that check in alongside the advanced-drawer open/closed state. Currency
-    // never touches language (footer text, labels, etc.) - the two are
-    // independent settings.
-    applyAdvancedVisibility();
+    // The currency picker lives on the Settings page now, so these buttons
+    // are usually absent. setCurrency() still runs on every startup and on
+    // every storage change, so it must not depend on them being here.
+    [[usdBtn, "USD"], [eurBtn, "EUR"], [gbpBtn, "GBP"], [jpyBtn, "JPY"], [offBtn, "OFF"]]
+      .forEach(([b, code]) => { if (b) b.classList.toggle("active", currentCurrency === code); });
+    // Currency never touches language (footer text, labels, etc.) - the two
+    // are independent settings. The FX-rate row that used to be hidden here
+    // when prices are off now lives on the Settings page.
+    applyBadgeWidth(); // "prices off" removes a whole column from the block
     render(search(searchEl.value));
     if (persist && chrome.storage && chrome.storage.local) {
       chrome.storage.local.set({ axisCurrency: currentCurrency });
     }
   }
-  usdBtn.addEventListener("click", () => setCurrency("USD", true));
-  eurBtn.addEventListener("click", () => setCurrency("EUR", true));
-  gbpBtn.addEventListener("click", () => setCurrency("GBP", true));
-  jpyBtn.addEventListener("click", () => setCurrency("JPY", true));
-  offBtn.addEventListener("click", () => setCurrency("OFF", true));
+  [[usdBtn, "USD"], [eurBtn, "EUR"], [gbpBtn, "GBP"], [jpyBtn, "JPY"], [offBtn, "OFF"]]
+    .forEach(([b, code]) => { if (b) b.addEventListener("click", () => setCurrency(code, true)); });
 
   // ---- Startup: apply any stored monthly price override before building the
   // searchable list, then read the saved currency choice, then do the first render.
@@ -1935,6 +2127,18 @@
         rebuildChipsetIndex();
         render(search(searchEl.value));
       }
+      // The Settings page writes these three; reflow rather than make the
+      // user reopen the popup.
+      if (changes[OS13_KEY] || changes[COMPUTE_KEY] || changes[CHIPSETS_HIDDEN_KEY]) {
+        if (changes[OS13_KEY]) showOs13 = changes[OS13_KEY].newValue !== false;
+        if (changes[COMPUTE_KEY]) showCompute = changes[COMPUTE_KEY].newValue !== false;
+        if (changes[CHIPSETS_HIDDEN_KEY]) showChipset = changes[CHIPSETS_HIDDEN_KEY].newValue !== true;
+        applyBadgeWidth();
+        rerenderCatalogue();
+      }
+      if (changes.axisCurrency && changes.axisCurrency.newValue !== currentCurrency) {
+        setCurrency(changes.axisCurrency.newValue, false);
+      }
       if (changes.fxRates) {
         fxRates = changes.fxRates.newValue || null;
         if (currentCurrency === "JPY" || currentCurrency === "GBP") render(search(searchEl.value));
@@ -1963,7 +2167,7 @@
 
   // ---- Settings (gear) button - opens the monthly price-update page ----
   const settingsBtn = document.getElementById("settingsBtn");
-  settingsBtn.addEventListener("click", () => {
+  settingsBtn?.addEventListener("click", () => {
     if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
   });
 
@@ -2021,7 +2225,7 @@
   function ensureFindCamsMounted() {
     if (!findCamsMounted) {
       findCamsMounted = true;
-      AxisFindCams.mount(document.getElementById("findCamsMount"), { chipsetFor });
+      AxisFindCams.mount(document.getElementById("findCamsMount"), { chipsetFor, os13For, computeFor });
     }
   }
   findCamsBtn.addEventListener("click", () => {
@@ -2343,6 +2547,110 @@
 
   // ---- Chipset data status / manual refresh ----
   const chipsetStatusEl = document.getElementById("chipsetStatus");
+  // ---------------------------------------------------------------------
+  // AXIS OS 13 badge toggle. Writes axisShowOs13 to chrome.storage.local;
+  // the three axis.com content scripts watch that key and re-render live.
+  // Default ON - an absent key means never toggled, not opted out.
+  // OS13_KEY and showOs13 are declared further up, beside the lookup they
+  // belong to, because the first catalogue render needs them.
+  // ---------------------------------------------------------------------
+
+  // The storage read below is async and can land before the catalogue list
+  // has been built, so re-rendering it is best-effort: if it is not ready,
+  // the normal first render already includes the pills.
+  function rerenderCatalogue() {
+    try {
+      if (searchEl) render(search(searchEl.value));
+    } catch (e) {
+      /* catalogue not ready yet */
+    }
+  }
+
+  // Looked up lazily rather than closed over a const: applyStaticI18nLabels()
+  // calls renderOs13Toggle(), and the function declaration hoists above this
+  // point while a const would still be in its temporal dead zone.
+  function renderOs13Toggle() {
+    const os13Btn = document.getElementById("toggleOs13");
+    if (!os13Btn) return;
+    os13Btn.textContent = showOs13 ? t("os13On", "On") : t("os13Off", "Off");
+    os13Btn.classList.toggle("active", showOs13);
+    renderOs13Status();
+  }
+
+  // Mirrors renderChipsetStatus(). The verdict comes from each model's newest
+  // AXIS OS build, re-harvested weekly by background.js.
+  function renderOs13Status() {
+    const statusEl = document.getElementById("os13Status");
+    if (!statusEl) return;
+    if (!showOs13) { statusEl.textContent = ""; statusEl.classList.remove("error"); return; }
+    if (!chrome.storage || !chrome.storage.local) {
+      statusEl.textContent = t("unavailable", "unavailable");
+      return;
+    }
+    chrome.storage.local.get(["os13CheckedCount", "os13UpdatedAt", "os13LastError"], (r) => {
+      if (r.os13LastError) {
+        statusEl.classList.add("error");
+        statusEl.textContent = t("lastUpdateFailed", "Last update failed: " + r.os13LastError, r.os13LastError);
+        return;
+      }
+      statusEl.classList.remove("error");
+      if (!r.os13UpdatedAt) {
+        statusEl.textContent = t("os13StatusBundled", "Using the bundled snapshot. Models with no confirmed verdict get no badge.");
+        return;
+      }
+      const n = r.os13CheckedCount || 0;
+      const when = fmtWhen(r.os13UpdatedAt);
+      statusEl.textContent = t("os13StatusOk", n + " models re-checked · updated " + when, n, when);
+    });
+  }
+
+  const refreshOs13Btn = document.getElementById("refreshOs13");
+  if (refreshOs13Btn) {
+    refreshOs13Btn.addEventListener("click", () => {
+      refreshOs13Btn.disabled = true;
+      refreshOs13Btn.textContent = t("updating", "Updating…");
+      chrome.runtime.sendMessage({ type: "REFRESH_OS13" }, (resp) => {
+        refreshOs13Btn.disabled = false;
+        refreshOs13Btn.textContent = t("update", "Update");
+        renderOs13Status();
+        if (resp && !resp.ok) {
+          const el = document.getElementById("os13Status");
+          if (el) { el.classList.add("error"); el.textContent = String(resp.error || "failed"); }
+        }
+      });
+    });
+  }
+
+  // NOT gated on the toggle button existing: this read is what loads the
+  // badge toggles (set on the Settings page now) and the weekly harvested
+  // os13Data. Skipping it would silently fall back to the bundled snapshot
+  // and to both badges defaulting to on.
+  const os13Btn = document.getElementById("toggleOs13");
+  {
+    chrome.storage.local.get([OS13_KEY, COMPUTE_KEY, CHIPSETS_HIDDEN_KEY, "os13Data"], (res) => {
+      showOs13 = !(res && res[OS13_KEY] === false);
+      showCompute = !(res && res[COMPUTE_KEY] === false);
+      showChipset = !(res && res[CHIPSETS_HIDDEN_KEY] === true);
+      applyBadgeWidth();
+      // background.js re-harvests weekly; prefer that over the bundled snapshot.
+      if (res && res.os13Data && Object.keys(res.os13Data).length > 0) {
+        OS13 = res.os13Data;
+        rebuildOs13Index();
+      }
+      renderOs13Toggle();
+      rerenderCatalogue();
+    });
+    if (os13Btn) {
+      os13Btn.addEventListener("click", () => {
+        showOs13 = !showOs13;
+        chrome.storage.local.set({ [OS13_KEY]: showOs13 });
+        applyBadgeWidth();
+        renderOs13Toggle();
+        rerenderCatalogue();
+      });
+    }
+  }
+
   const refreshBtn = document.getElementById("refreshChipsets");
 
   function fmtWhen(ts) {
@@ -2357,6 +2665,8 @@
   }
 
   function renderChipsetStatus() {
+    // The row this wrote to lives on the Settings page now.
+    if (!chipsetStatusEl) return;
     if (!chrome.storage || !chrome.storage.local) {
       chipsetStatusEl.textContent = t("unavailable", "unavailable");
       return;
@@ -2383,7 +2693,7 @@
   }
   renderChipsetStatus();
 
-  refreshBtn.addEventListener("click", () => {
+  refreshBtn?.addEventListener("click", () => {
     refreshBtn.disabled = true;
     refreshBtn.textContent = t("updating", "Updating…");
     chrome.runtime.sendMessage({ type: "REFRESH_CHIPSETS" }, (resp) => {
@@ -2411,6 +2721,8 @@
   const refreshFxBtn = document.getElementById("refreshFx");
 
   function renderFxStatus() {
+    // The row this wrote to lives on the Settings page now.
+    if (!fxStatusEl) return;
     if (!chrome.storage || !chrome.storage.local) {
       fxStatusEl.textContent = t("unavailable", "unavailable");
       return;
@@ -2437,7 +2749,7 @@
   }
   renderFxStatus();
 
-  refreshFxBtn.addEventListener("click", () => {
+  refreshFxBtn?.addEventListener("click", () => {
     refreshFxBtn.disabled = true;
     refreshFxBtn.textContent = t("updating", "Updating…");
     chrome.runtime.sendMessage({ type: "REFRESH_FX" }, (resp) => {

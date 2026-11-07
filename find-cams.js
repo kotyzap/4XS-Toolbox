@@ -219,6 +219,40 @@
     };
   }
 
+  // Fallback OS 13 / compute lookups, same shape and same reason as
+  // defaultChipsetFor() above: the popup injects popup.js's own versions,
+  // the standalone page has none and falls back to the bundled data.
+  //
+  // Matching is exact on the normalised model code and deliberately does NOT
+  // trim trailing tokens. A scanned "M1137" must never resolve to
+  // "M1137 Mk II" - they are different products with different verdicts,
+  // and the scanner reports what is physically on the network, so a wrong
+  // match here would be a wrong answer about a real camera.
+  // Same list the popup, the FoV map and the axis.com content scripts use.
+  // Duplicated rather than shared because this module is also loaded by the
+  // standalone page, which pulls in none of those.
+  const CAMSTREAMER_ACAPS_PRESET = ["ARTPEC-9", "ARTPEC-8", "ARTPEC-6/7"];
+  const normModel = (s) => (s || "").toUpperCase().replace(/^AXIS\s+/, "").trim();
+
+  function defaultOs13For() {
+    const src = typeof OS13_DATA !== "undefined" ? OS13_DATA.models || OS13_DATA : null;
+    if (!src) return () => null;
+    const map = new Map(Object.keys(src).map((k) => [normModel(k), src[k]]));
+    return (name) => {
+      const e = map.get(normModel(name));
+      // "unknown" is a verdict we cannot stand behind - render no badge
+      // rather than implying an answer. No badge never means "no".
+      return e && e.v !== "unknown" ? e : null;
+    };
+  }
+
+  function defaultComputeFor() {
+    const src = typeof COMPUTE_DATA !== "undefined" ? COMPUTE_DATA.models || COMPUTE_DATA : null;
+    if (!src) return () => null;
+    const map = new Map(Object.keys(src).map((k) => [normModel(k), src[k]]));
+    return (name) => map.get(normModel(name)) || null;
+  }
+
   async function probe(ip, signal) {
     const ctl = new AbortController();
     const onAbort = () => ctl.abort();
@@ -238,6 +272,8 @@
 
   function mount(root, opts = {}) {
     const chipsetFor = opts.chipsetFor || defaultChipsetFor();
+    const os13For = opts.os13For || defaultOs13For();
+    const computeFor = opts.computeFor || defaultComputeFor();
     root.classList.add("fc");
     root.innerHTML = `
       <div class="fc-controls">
@@ -352,6 +388,42 @@
 
     const chipsetOf = (d) => chipsetFor(d.ProdShortName || "AXIS " + (d.ProdNbr || "")) || chipsetFor("AXIS " + (d.ProdNbr || "")) || null;
 
+    // ProdNbr is the bare model code the camera reports over VAPIX
+    // ("Q1656", "M1137"), which is what both data sets are keyed on.
+    const os13Of = (d) => (d.ProdNbr ? os13For("AXIS " + d.ProdNbr) : null);
+    const computeOf = (d) => (d.ProdNbr ? computeFor("AXIS " + d.ProdNbr) : null);
+
+    // Order and styling follow the catalogue and the FoV map: chipset first
+    // (with the CamStreamer tick when the SoC runs its apps), then OS 13,
+    // then compute. Three lists showing the same three facts in three
+    // different orders was the thing worth fixing here.
+    function badgesHtml(d) {
+      const out = [];
+      const chip = chipsetOf(d);
+      out.push(
+        `<span class="fc-chipset${chip ? "" : " unknown"}">${esc(
+          chip ? chip + (CAMSTREAMER_ACAPS_PRESET.includes(chip) ? " \u2705" : "") : t("unknownChipset", "chipset n/a")
+        )}</span>`
+      );
+      const e = os13Of(d);
+      if (e) {
+        const ok = e.v === "os13";
+        const bits = [ok ? t("os13Yes", "AXIS OS 13 supported") : t("os13No", "No AXIS OS 13 for this hardware")];
+        if (e.p) bits.push(e.p);
+        if (e.e) bits.push(t("supportUntil", "support until ") + e.e);
+        out.push(`<span class="fc-os13 ${ok ? "yes" : "no"}" title="${esc(bits.join(" - "))}">OS13 ${ok ? "\u2705" : "\uD83D\uDEAB"}</span>`);
+      }
+      const c = computeOf(d);
+      if (c === "d" || c === "m") {
+        const dl = c === "d";
+        out.push(`<span class="fc-compute ${dl ? "dlpu" : "mlpu"}" title="${esc(
+          dl ? t("dlpuTip", "Deep learning processing unit - runs deep-learning analytics on the camera")
+             : t("mlpuTip", "Machine learning processing unit - lighter than a DLPU")
+        )}">${dl ? "DLPU" : "MLPU"}</span>`);
+      }
+      return out.join("");
+    }
+
     function render() {
       if (!results.length) {
         listEl.innerHTML = finishedAt ? `<div class="fc-empty">${esc(t("none", "No Axis devices answered. Check the subnet, and that HTTP is enabled on the cameras."))}</div>` : "";
@@ -363,7 +435,7 @@
         return `<div class="fc-card">
           <div class="fc-model fc-copy" data-copy="${esc(model)}" title="Click to copy">${esc(model)}${d.ProdType ? `<span class="fc-full">${esc(d.ProdType)}</span>` : ""}</div>
           <a class="fc-ip" href="http://${esc(d.ip)}/" target="_blank" rel="noopener">${esc(d.ip)}</a>
-          <span class="fc-chipset${chip ? "" : " unknown"}">${esc(chip || t("unknownChipset", "chipset n/a"))}</span>
+          <div class="fc-badges">${badgesHtml(d)}</div>
           <div class="fc-meta">
             <span class="fc-copy" data-copy="${esc(d.SerialNumber)}" title="Click to copy">SN ${esc(d.SerialNumber)}</span>
             <span class="fc-copy" data-copy="${esc(d.Version || "")}" title="Click to copy">FW ${esc(d.Version || "?")}</span>

@@ -59,3 +59,53 @@ a.gs-title .axis-search-fav-badge,
   cursor: pointer !important;
   text-decoration: none !important;
 }
+
+/* AXIS OS 13 verdict badge - same !important treatment as the chipset badge
+   above, for the same reason (the Google PSE widget's link-colour rules). */
+a.gs-title .axis-search-os13-badge,
+.axis-search-os13-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+  text-decoration: none !important;
+}
+a.gs-title .axis-search-os13-badge.is-os13,
+.axis-search-os13-badge.is-os13 { background-color: #1f7a3d !important; }
+a.gs-title .axis-search-os13-badge.is-no-os13,
+.axis-search-os13-badge.is-no-os13 { background-color: #a32020 !important; }
+
+/* Compute-capability badge - same !important treatment as the badges above,
+   for the same reason (the Google PSE widget's link-colour rules). */
+a.gs-title .axis-search-compute-badge,
+.axis-search-compute-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+  text-decoration: none !important;
+}
+a.gs-title .axis-search-compute-badge.is-dlpu,
+.axis-search-compute-badge.is-dlpu { background-color: #1d4ed8 !important; }
+a.gs-title .axis-search-compute-badge.is-mlpu,
+.axis-search-compute-badge.is-mlpu { background-color: #7c3aed !important; }
+a.gs-title .axis-search-compute-badge.is-nocompute,
+.axis-search-compute-badge.is-nocompute { background-color: #6b7280 !important; }

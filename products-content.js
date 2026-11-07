@@ -65,6 +65,16 @@
   // to "AMB X", so at most a handful of badges ever show per card.
   const CHIPSET_GROUP_ORDER = ["ARTPEC 6-9", "ARTPEC 3-5"];
 
+  // A label naming a RANGE rather than a chip - "ARTPEC 6-9", "ARTPEC-6/7".
+  // It carries no chipset information: "ARTPEC 6-9" is exactly the set in
+  // CAMSTREAMER_ACAPS_PRESET, so the label and its checkmark say the same
+  // single thing twice. Where Axis has not published the real SoC, show what
+  // we actually know - CamStreamer app support - rather than a falsely
+  // precise chip range.
+  function isChipsetGroupLabel(label) {
+    return label.indexOf("/") !== -1 || /\s\d-\d$/.test(label);
+  }
+
   function displayChipsetGroup(rawLabel) {
     if (rawLabel === "ARTPEC-9" || rawLabel === "ARTPEC-8" || rawLabel === "ARTPEC-6/7") return "ARTPEC 6-9";
     if (rawLabel === "ARTPEC-5" || rawLabel === "ARTPEC-4" || rawLabel === "ARTPEC-3") return "ARTPEC 3-5";
@@ -78,9 +88,14 @@
   // checkmark if ANY of its underlying raw labels does (true for the whole
   // "ARTPEC 6-9" group, never for "ARTPEC 3-5" or any AMB group, matching
   // CAMSTREAMER_ACAPS_PRESET below).
-  function appendChipsetBadges(row, rawLabels) {
+  function appendChipsetBadges(row, rawLabels, exactSoc) {
+    // A product newer than CamStreamer's list has no bucket at all, but Axis
+    // may still name its SoC - fall back to that rather than show nothing.
+    // It gets no CamStreamer checkmark, which is correct: CamStreamer has
+    // not listed it, so we cannot claim app support for it.
+    const labels = rawLabels && rawLabels.length ? rawLabels : exactSoc ? [exactSoc] : [];
     const groupAcap = new Map();
-    rawLabels.forEach((raw) => {
+    labels.forEach((raw) => {
       const display = displayChipsetGroup(raw);
       const acap = CAMSTREAMER_ACAPS_PRESET.includes(raw);
       groupAcap.set(display, groupAcap.get(display) || acap);
@@ -92,14 +107,26 @@
       if (ib === -1) return -1;
       return ia - ib;
     });
+    // One collapsed group plus a known exact SoC means this row is a single
+    // model, so show Axis's own chip name instead of CamStreamer's bucket.
+    // More than one group means a whole series - the bucket is honest there.
+    const useExact = exactSoc && sortedLabels.length === 1;
     sortedLabels.forEach((label) => {
       const acap = groupAcap.get(label);
+      const asSupport = !useExact && acap && isChipsetGroupLabel(label);
+      const shown = useExact ? exactSoc : asSupport ? "CamStreamer" : label;
       const chipsetSpan = document.createElement("span");
       chipsetSpan.className = "axis-product-chipset-badge";
-      chipsetSpan.textContent = label + (acap ? " ✅" : "");
-      chipsetSpan.title =
-        t("chipsetTooltipPrefix", "Chipset (via CamStreamer app-compatibility data): ") + label +
-        (acap ? t("chipsetTooltipCsSuffix", " — CamStreamer Support") : "");
+      chipsetSpan.textContent = shown + (acap ? " ✅" : "");
+      chipsetSpan.title = useExact
+        ? t("chipsetTooltipExact", "System-on-chip (via Axis product data): ") + exactSoc +
+            (acap ? t("chipsetTooltipCsSuffix", " — CamStreamer Support") : "")
+        : asSupport
+          ? t("chipsetTooltipSupport",
+              "Runs CamStreamer apps. Axis does not publish the exact chipset for this " +
+              "model; CamStreamer only groups it as ") + label
+          : t("chipsetTooltipPrefix", "Chipset (via CamStreamer app-compatibility data): ") + label +
+              (acap ? t("chipsetTooltipCsSuffix", " — CamStreamer Support") : "");
       row.appendChild(chipsetSpan);
     });
   }
@@ -623,6 +650,218 @@
   }
 
   // ---------------------------------------------------------------------
+  // AXIS OS 13 verdict (os13-data.js, keys identical to
+  // CHIPSET_DATA.chipsets). The lookup here is EXACT ONLY - deliberately
+  // NOT lookupChipset()'s prefix/substring fallback. "M1137" and
+  // "M1137 Mk II" share one chipset bucket (ARTPEC-6/7) but not one OS 13
+  // verdict: the Mk II is ARTPEC-7 and upgrades, the original is ARTPEC-6
+  // and never will. A fuzzy hit would report the stranded model as fine,
+  // and telling an owner their camera upgrades when it cannot is the one
+  // error that costs money rather than time - see Preflight rule A9.
+  // Anything not matched exactly, or whose verdict is "unknown", gets no
+  // badge at all. No badge never reads as "no OS 13"; a wrong badge does.
+  // ---------------------------------------------------------------------
+
+  // os13-data.js is the bundled snapshot. background.js re-harvests the
+  // firmware tracks weekly into chrome.storage.local.os13Data and that
+  // overrides it live, the same way chipsetData overrides CHIPSET_DATA.
+  let OS13 = (typeof OS13_DATA !== "undefined" && OS13_DATA.models) || {};
+  const OS13_KEY = "axisShowOs13";
+  let showOs13 = true;
+
+  let os13Index = new Map();
+  function rebuildOs13Index() {
+    os13Index = new Map();
+    for (const key of Object.keys(OS13)) os13Index.set(normalizeBare(key), OS13[key]);
+  }
+  rebuildOs13Index();
+
+  // axis.com lists packaging, regional and optics variants as cards of their
+  // own: "AXIS Q6355-LE No Midspan", "AXIS M5000-G US", "AXIS Q1728 48 mm",
+  // "AXIS M3125-LVE Black". They are the same camera on the same firmware, so
+  // the verdict carries over - but ONLY when every extra token is packaging
+  // noise. "Mk II" is not noise: the M1137 and the M1137 Mk II are different
+  // products with opposite verdicts. That is exactly why this cannot reuse
+  // lookupChipset()'s prefix fallback, which would happily match them.
+  // Which trailing tokens may be trimmed when looking for the base model.
+  //
+  // Enumerating descriptors ("Camera", "Dome", "Corner", "Bispectral", ...)
+  // was a losing game - axis.com names cards from marketing copy. Inverted
+  // instead: an Axis model code ALWAYS carries a digit (Q8752-E, P3245-LVE,
+  // M12-free names like "Bispectral" never identify a product on their own),
+  // so a trailing token with no digit in it is decoration by construction.
+  // Digit-bearing tokens still need the explicit list below, because those
+  // are the ones that could be a model code.
+  //
+  // A Mk marker is excluded from both: "Mk II" is identity, not decoration.
+  // The original M1137 and the M1137 Mk II are different products with
+  // different OS 13 answers, so trimming "Mk II" would be the one error that
+  // costs the owner money (Preflight rule A9).
+  const OS13_MK_TOKEN = /^(?:MK|II|III|IV)$/;
+  const OS13_VARIANT_TOKEN = /^(?:\d+(?:\.\d+)?|\d+P|\d+HZ|M12|RJ45|I-CS|4K)$/;
+
+  function os13TrimmableToken(tok) {
+    if (OS13_MK_TOKEN.test(tok)) return false;
+    if (OS13_VARIANT_TOKEN.test(tok)) return true;
+    return !/\d/.test(tok);
+  }
+
+  function os13VariantOnly(rest) {
+    const tokens = rest.split(" ").filter(Boolean);
+    return tokens.length > 0 && tokens.every(os13TrimmableToken);
+  }
+
+  // Walk the name back a whole token at a time. Stop dead at the first token
+  // that is not packaging noise, so a non-variant suffix can never be trimmed
+  // away to reach a different product's entry.
+  function os13TrimVariant(norm) {
+    const tokens = norm.split(" ").filter(Boolean);
+    for (let i = tokens.length - 1; i > 0; i--) {
+      if (!os13VariantOnly(tokens.slice(i).join(" "))) return null;
+      const hit = os13Index.get(tokens.slice(0, i).join(" "));
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  // Raw entry, whatever its verdict. Used for the exact SoC, which is worth
+  // showing even when the OS 13 answer is unknown.
+  function os13Lookup(displayName) {
+    const norm = normalizeBare(displayName);
+    let entry = os13Index.get(norm);
+    if (!entry) {
+      // Same stainless/marine spelling fallback chipsetFor() uses.
+      const demarined = norm.replace(/-S([A-Z]+)\b/, "-$1");
+      if (demarined !== norm) entry = os13Index.get(demarined);
+    }
+    if (!entry) entry = os13TrimVariant(norm);
+    return entry || null;
+  }
+
+  function os13For(displayName) {
+    const entry = os13Lookup(displayName);
+    return entry && entry.v !== "unknown" ? entry : null;
+  }
+
+  // Axis's own SoC for this model ("ARTPEC-7", "ARTPEC-8 (x2)", "CV25"),
+  // where CamStreamer's data only has a collapsed bucket ("ARTPEC 6-9").
+  // DISPLAY ONLY: data-axis-chipset and the CamStreamer-support checkmark
+  // keep the bucket value, so chipset filtering and sorting are untouched.
+  function exactSocFor(displayName) {
+    const entry = displayName ? os13Lookup(displayName) : null;
+    return (entry && entry.p) || null;
+  }
+
+  // Aggregate (series) cards cover many models at once. Badge them only when
+  // every model agrees - a mixed series, or one holding any unknown, gets
+  // nothing rather than a verdict that is wrong for half of it.
+  function os13ForNames(names) {
+    if (!names || !names.length) return null;
+    let agreed = null;
+    for (const name of names) {
+      const entry = os13For(name);
+      if (!entry) return null;
+      if (agreed && agreed.v !== entry.v) return null;
+      agreed = agreed || entry;
+    }
+    return agreed;
+  }
+
+  function buildOs13Badge(entry, className) {
+    const ok = entry.v === "os13";
+    const span = document.createElement("span");
+    span.className = className + (ok ? " is-os13" : " is-no-os13");
+    span.textContent = ok ? "OS13 \u2705" : "OS13 \uD83D\uDEAB";
+    const parts = [ok
+      ? t("os13TooltipYes", "AXIS OS 13 supported")
+      : t("os13TooltipNo", "No AXIS OS 13 for this hardware - this camera stays on its current firmware")];
+    if (entry.p) parts.push(entry.p);
+    if (entry.e) parts.push(t("os13TooltipEofw", "firmware support until ") + entry.e);
+    span.title = parts.join(" - ");
+    return span;
+  }
+
+  function appendOs13Badge(row, displayName, className) {
+    if (!showOs13) return;
+    const entry = os13For(displayName);
+    if (entry) row.appendChild(buildOs13Badge(entry, className));
+  }
+
+  // ---------------------------------------------------------------------
+  // Compute capability (compute-data.js): DLPU / MLPU / none, from Axis's
+  // Q4 2026 comparison tables. NOT derivable from the chipset - ARTPEC-7 is
+  // mixed (2 DLPU, 4 MLPU, 11 none) and the S6LM onboard cameras are current
+  // products with no compute unit at all. A model absent from that table
+  // gets no badge rather than a guess, same rule as the OS 13 verdict.
+  // Shares the OS 13 name matching, including its Mk-marker guard.
+  // ---------------------------------------------------------------------
+
+  const COMPUTE = (typeof COMPUTE_DATA !== "undefined" && COMPUTE_DATA.models) || {};
+  const COMPUTE_KEY = "axisShowCompute";
+  let showCompute = true;
+
+  const computeIndex = new Map();
+  for (const key of Object.keys(COMPUTE)) computeIndex.set(normalizeBare(key), COMPUTE[key]);
+
+  function computeFor(displayName) {
+    const norm = normalizeBare(displayName);
+    let code = computeIndex.get(norm);
+    if (!code) {
+      const demarined = norm.replace(/-S([A-Z]+)\b/, "-$1");
+      if (demarined !== norm) code = computeIndex.get(demarined);
+    }
+    if (!code) {
+      const toks = norm.split(" ").filter(Boolean);
+      for (let i = toks.length - 1; i > 0 && !code; i--) {
+        if (!toks.slice(i).every(os13TrimmableToken)) break;
+        code = computeIndex.get(toks.slice(0, i).join(" "));
+      }
+    }
+    return code || null;
+  }
+
+  const COMPUTE_TEXT = { d: "DLPU", m: "MLPU", n: "NO DLPU" };
+  const COMPUTE_TIP = {
+    d: "Deep learning processing unit - runs deep-learning models on the camera",
+    m: "Machine learning processing unit - lighter than a DLPU, no deep-learning models",
+    n: "No machine-learning compute unit on this camera",
+  };
+
+  function buildComputeBadge(code, className) {
+    const span = document.createElement("span");
+    span.className =
+      className + (code === "d" ? " is-dlpu" : code === "m" ? " is-mlpu" : " is-nocompute");
+    span.textContent = COMPUTE_TEXT[code];
+    span.title =
+      t("computeTooltip" + code.toUpperCase(), COMPUTE_TIP[code]) +
+      t("computeTooltipSource", " (Axis comparison tables, Q4 2026)");
+    return span;
+  }
+
+  // Series aggregate, same unanimity rule as os13ForNames: a DLPU/MLPU badge
+  // on a heading that covers many models is only honest when every model in
+  // it has the same compute unit. One unknown model and the series gets
+  // nothing, because "DLPU" on a series where one camera has none is the
+  // kind of wrong that costs a sale.
+  function computeForNames(names) {
+    if (!names || !names.length) return null;
+    let agreed = null;
+    for (const name of names) {
+      const code = computeFor(name);
+      if (!code) return null;
+      if (agreed && agreed !== code) return null;
+      agreed = agreed || code;
+    }
+    return agreed;
+  }
+
+  function appendComputeBadge(row, displayName, className) {
+    if (!showCompute) return;
+    const code = computeFor(displayName);
+    if (code) row.appendChild(buildComputeBadge(code, className));
+  }
+
+  // ---------------------------------------------------------------------
   // Series ("from $X") fallback - when a card/heading names a model that
   // isn't an exact/prefix match in the catalog (e.g. a brand-new SKU added
   // to a series page before the catalog is regenerated, or a whole-series
@@ -695,16 +934,50 @@
       if (chipset) chipsetLabels = [chipset];
     } else {
       const fallback = seriesFromBadge(name);
-      if (!fallback) return null;
-      priceInfo = fallback;
-      const prefix = seriesPrefixOf(name);
-      if (prefix) chipsetLabels = seriesChipsets(prefix);
+      if (fallback) {
+        priceInfo = fallback;
+        const prefix = seriesPrefixOf(name);
+        if (prefix) chipsetLabels = seriesChipsets(prefix);
+      } else {
+        // No price for this model - typically a product newer than the
+        // bundled price list. The chipset and OS 13 answers don't depend on
+        // the price list, so render those rather than nothing at all.
+        priceInfo = null;
+        const chipset = chipsetFor(name);
+        if (chipset) chipsetLabels = [chipset];
+        const haveSomething =
+          chipsetLabels.length || exactSocFor(name) || (showOs13 && os13For(name)) ||
+          (showCompute && computeFor(name));
+        if (!haveSomething) return null;
+      }
     }
 
     const row = document.createElement("div");
     row.className = "axis-product-badges-row";
-    appendChipsetBadges(row, chipsetLabels);
-    if (!pricesHidden()) {
+    // A series-fallback row describes many models, so the exact SoC of any
+    // one of them would be misleading there; a specific model gets it.
+    const specific = Boolean(badge) || priceInfo === null;
+    appendChipsetBadges(row, chipsetLabels, specific ? exactSocFor(name) : null);
+    if (showOs13) {
+      // A specific model gets its own verdict; a series-fallback card only
+      // gets one when every model in the series agrees (see os13ForNames).
+      let os13 = null;
+      if (specific) {
+        os13 = os13For(name);
+      } else {
+        const seriesPrefix = seriesPrefixOf(name);
+        if (seriesPrefix) os13 = os13ForNames(seriesModelNames(seriesPrefix));
+      }
+      if (os13) row.appendChild(buildOs13Badge(os13, "axis-product-os13-badge"));
+    }
+    if (specific) {
+      appendComputeBadge(row, name, "axis-product-compute-badge");
+    } else if (showCompute) {
+      const seriesPrefix = seriesPrefixOf(name);
+      const code = seriesPrefix ? computeForNames(seriesModelNames(seriesPrefix)) : null;
+      if (code) row.appendChild(buildComputeBadge(code, "axis-product-compute-badge"));
+    }
+    if (priceInfo && !pricesHidden()) {
       const priceSpan = document.createElement("span");
       priceSpan.className = "axis-product-price-badge";
       priceSpan.textContent = priceInfo.text;
@@ -797,11 +1070,15 @@
     const name = h1.textContent.trim();
     if (!name) return;
 
+    // Not gated on price: a product newer than the bundled price list (e.g.
+    // AXIS M3945-R) still has a chipset and an OS 13 answer, and those are
+    // the reason to look at this row at all.
     const priceInfo = priceBadgeFor(name);
-    if (!priceInfo) return;
+    const chipset = chipsetFor(name);
+    const exactSoc = exactSocFor(name);
+    if (!priceInfo && !chipset && !exactSoc && !(showOs13 && os13For(name))) return;
     container.setAttribute(PRODUCT_PROCESSED_ATTR, "1");
 
-    const chipset = chipsetFor(name);
     const breadcrumbList = scope.querySelector(BREADCRUMB_LIST_SELECTOR);
     const row = document.createElement(breadcrumbList ? "li" : "div");
     row.className = breadcrumbList
@@ -814,8 +1091,10 @@
       sep.textContent = "/";
       row.appendChild(sep);
     }
-    if (chipset) appendChipsetBadges(row, [chipset]);
-    if (!pricesHidden()) {
+    if (chipset || exactSoc) appendChipsetBadges(row, chipset ? [chipset] : [], exactSoc);
+    appendOs13Badge(row, name, "axis-product-os13-badge");
+    appendComputeBadge(row, name, "axis-product-compute-badge");
+    if (priceInfo && !pricesHidden()) {
       const priceSpan = document.createElement("span");
       priceSpan.className = "axis-product-price-badge";
       priceSpan.textContent = priceInfo.text;
@@ -824,7 +1103,7 @@
     }
     // Nothing but the "/" breadcrumb separator left (prices hidden and no
     // chipset for this model) - don't append a stray separator.
-    if (!row.querySelector(".axis-product-chipset-badge, .axis-product-price-badge")) return;
+    if (!row.querySelector(".axis-product-chipset-badge, .axis-product-price-badge, .axis-product-os13-badge, .axis-product-compute-badge")) return;
 
     if (breadcrumbList) breadcrumbList.appendChild(row);
     else h1.insertAdjacentElement("afterend", row);
@@ -938,6 +1217,16 @@
   // discontinued and no longer sold, which would otherwise surface as
   // phantom chipset badges (e.g. old Ambarella models) on a series that
   // today only ships ARTPEC hardware.
+  // Model names behind a series prefix, scoped to MODELS for the same reason
+  // seriesChipsets() is - see its comment above.
+  function seriesModelNames(prefix) {
+    const names = [];
+    for (const key of modelKeys) {
+      if (normalizeBare(key).startsWith(prefix)) names.push(key);
+    }
+    return names;
+  }
+
   function seriesChipsets(prefix) {
     const found = new Set();
     for (const key of modelKeys) {
@@ -1003,6 +1292,14 @@
       row.appendChild(sep);
     }
     appendChipsetBadges(row, chipsets);
+    if (showOs13) {
+      const seriesOs13 = os13ForNames(cardNames);
+      if (seriesOs13) row.appendChild(buildOs13Badge(seriesOs13, "axis-product-os13-badge"));
+    }
+    if (showCompute) {
+      const seriesCompute = computeForNames(cardNames);
+      if (seriesCompute) row.appendChild(buildComputeBadge(seriesCompute, "axis-product-compute-badge"));
+    }
     if (!pricesHidden()) {
       const priceSpan = document.createElement("span");
       priceSpan.className = "axis-product-price-badge";
@@ -1011,7 +1308,7 @@
       row.appendChild(priceSpan);
     }
     // Separator-only row guard, same as injectProductPage().
-    if (!row.querySelector(".axis-product-chipset-badge, .axis-product-price-badge")) return;
+    if (!row.querySelector(".axis-product-chipset-badge, .axis-product-price-badge, .axis-product-os13-badge, .axis-product-compute-badge")) return;
 
     if (breadcrumbList) breadcrumbList.appendChild(row);
     else h1.insertAdjacentElement("afterend", row);
@@ -1059,8 +1356,10 @@
       const names = headCells.map((th) => th.textContent.trim());
       const priceCells = [];
       const chipsetCells = [];
+      const os13Cells = [];
       let anyPrice = false;
       let anyChipset = false;
+      let anyOs13 = false;
 
       names.forEach((name) => {
         const badge = priceBadgeFor(name);
@@ -1079,14 +1378,25 @@
         if (chipset) {
           anyChipset = true;
           const acap = CAMSTREAMER_ACAPS_PRESET.includes(chipset);
+          const exact = exactSocFor(name);
           const span = document.createElement("span");
           span.className = "axis-product-chipset-badge axis-product-compare-badge";
-          span.textContent = chipset + (acap ? " ✅" : "");
+          span.textContent = (exact || chipset) + (acap ? " ✅" : "");
           span.title =
-            "Chipset (via CamStreamer app-compatibility data): " + chipset + (acap ? " — CamStreamer Support" : "");
+            (exact ? "System-on-chip (via Axis product data): " + exact
+                   : "Chipset (via CamStreamer app-compatibility data): " + chipset) +
+            (acap ? " — CamStreamer Support" : "");
           chipsetCells.push(span);
         } else {
           chipsetCells.push(null);
+        }
+
+        const os13 = showOs13 ? os13For(name) : null;
+        if (os13) {
+          anyOs13 = true;
+          os13Cells.push(buildOs13Badge(os13, "axis-product-os13-badge axis-product-compare-badge"));
+        } else {
+          os13Cells.push(null);
         }
       });
 
@@ -1096,12 +1406,12 @@
       // the comparison table, not just from a card elsewhere on the site.
       const favCells = names.map((name) => makeFavHeart(name, "axis-product-compare-badge"));
 
-      // Chipset above price, both above every existing spec row, so
-      // inserting order is: price row first (as first child), then
-      // chipset row, then favorite row (each insertBefore(tbody.firstChild)
-      // pushes the previous ones down one) - net visual order top to
-      // bottom: Favorite, Chipset, Price, then the site's own spec rows.
+      // Each insertBefore(tbody.firstChild) pushes the previous rows down
+      // one, so inserting price, then OS 13, then chipset, then favorite
+      // gives the net visual order top to bottom: Favorite, Chipset,
+      // AXIS OS 13, Price, then the site's own spec rows.
       if (anyPrice && !pricesHidden()) tbody.insertBefore(buildCompareRow(t("compareRowLabelPrice", "Price"), priceCells), tbody.firstChild);
+      if (anyOs13) tbody.insertBefore(buildCompareRow(t("compareRowLabelOs13", "AXIS OS 13"), os13Cells), tbody.firstChild);
       if (anyChipset) tbody.insertBefore(buildCompareRow(t("compareRowLabelChipset", "Chipset"), chipsetCells), tbody.firstChild);
       tbody.insertBefore(buildCompareRow(t("compareRowLabelFavorite", "🧡 Favorite"), favCells), tbody.firstChild);
     });
@@ -1177,7 +1487,7 @@
   scheduleInject();
 
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(["axisCurrency", "catalogOverride", "chipsetData", "fxRates", FAVORITES_KEY, CATEGORIES_KEY], (res) => {
+    chrome.storage.local.get(["axisCurrency", "catalogOverride", "chipsetData", "fxRates", "os13Data", OS13_KEY, COMPUTE_KEY, FAVORITES_KEY, CATEGORIES_KEY], (res) => {
       if (res && (res.axisCurrency === "USD" || res.axisCurrency === "GBP" || res.axisCurrency === "JPY" || res.axisCurrency === "EUR" || res.axisCurrency === "OFF")) {
         currentCurrency = res.axisCurrency;
       } else {
@@ -1190,10 +1500,17 @@
         }
       }
       if (res && res.fxRates) fxRates = res.fxRates;
+      // Default ON - absent key means never toggled, not opted out.
+      if (res && res[OS13_KEY] === false) showOs13 = false;
+      if (res && res[COMPUTE_KEY] === false) showCompute = false;
       applyCatalogOverride(res && res.catalogOverride);
       if (res && res.chipsetData && Object.keys(res.chipsetData).length > 0) {
         CHIPSETS = res.chipsetData;
         rebuildChipsetIndex();
+      }
+      if (res && res.os13Data && Object.keys(res.os13Data).length > 0) {
+        OS13 = res.os13Data;
+        rebuildOs13Index();
       }
       if (res && Array.isArray(res[FAVORITES_KEY])) favorites = new Set(res[FAVORITES_KEY]);
       if (res && Array.isArray(res[CATEGORIES_KEY])) {
@@ -1233,6 +1550,19 @@
         if (changes.chipsetData) {
           CHIPSETS = changes.chipsetData.newValue || {};
           rebuildChipsetIndex();
+          refreshAllBadges();
+        }
+        if (changes.os13Data) {
+          OS13 = changes.os13Data.newValue || {};
+          rebuildOs13Index();
+          refreshAllBadges();
+        }
+        if (changes[OS13_KEY]) {
+          showOs13 = changes[OS13_KEY].newValue !== false;
+          refreshAllBadges();
+        }
+        if (changes[COMPUTE_KEY]) {
+          showCompute = changes[COMPUTE_KEY].newValue !== false;
           refreshAllBadges();
         }
       });

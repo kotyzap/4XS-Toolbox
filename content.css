@@ -627,3 +627,113 @@
   text-align: center;
   pointer-events: none;
 }
+
+/* AXIS OS 13 verdict badge on a Product Selector card - sits directly above
+   the chipset badge in the same bottom-centre stack. */
+.axis-os13-badge {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-block;
+  padding: 2px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  cursor: help;
+}
+.axis-os13-badge.is-os13 { background-color: rgba(31, 122, 61, 0.88); }
+.axis-os13-badge.is-no-os13 { background-color: rgba(163, 32, 32, 0.88); }
+
+/* Product Selector detail panel reuses products-content.js's badge classes
+   (see .axis-product-selector-page-badges below). */
+.axis-product-selector-page-badges .axis-product-os13-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+}
+.axis-product-selector-page-badges .axis-product-os13-badge.is-os13 { background-color: #1f7a3d; }
+.axis-product-selector-page-badges .axis-product-os13-badge.is-no-os13 { background-color: #a32020; }
+
+/* Collapsible "Display" section in the filter panel - holds the three
+   badge-visibility checkboxes (chipsets, AXIS OS 13, prices). Styled to sit
+   flush with the chipset filter rows above it rather than look like a
+   separate widget; the marker is rotated by hand so it matches the panel's
+   own chevrons instead of the browser default triangle. */
+.axis-chipset-panel-display {
+  margin-top: 2px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 4px;
+}
+.axis-chipset-panel-display > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 4px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  user-select: none;
+}
+.axis-chipset-panel-display > summary::-webkit-details-marker { display: none; }
+.axis-chipset-panel-display > summary::after {
+  content: "\25BE";
+  float: right;
+  transition: transform 0.15s ease;
+}
+.axis-chipset-panel-display[open] > summary::after { transform: rotate(180deg); }
+.axis-chipset-panel-display > summary:hover { opacity: 1; }
+
+/* Compute-capability badge on a Product Selector card - stacks above the
+   OS 13 badge in the same bottom-centre column. */
+.axis-compute-badge {
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-block;
+  padding: 2px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  cursor: help;
+}
+.axis-compute-badge.is-dlpu { background-color: rgba(29, 78, 216, 0.88); }
+.axis-compute-badge.is-mlpu { background-color: rgba(124, 58, 237, 0.88); }
+.axis-compute-badge.is-nocompute { background-color: rgba(107, 114, 128, 0.88); }
+
+.axis-product-selector-page-badges .axis-product-compute-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+}
+.axis-product-selector-page-badges .axis-product-compute-badge.is-dlpu { background-color: #1d4ed8; }
+.axis-product-selector-page-badges .axis-product-compute-badge.is-mlpu { background-color: #7c3aed; }
+.axis-product-selector-page-badges .axis-product-compute-badge.is-nocompute { background-color: #6b7280; }

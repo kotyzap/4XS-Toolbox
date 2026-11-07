@@ -359,6 +359,11 @@ body.panel-hidden #panel { display: none; }
   font-weight: normal;
   color: var(--muted);
   margin-top: 2px;
+  /* Reserved line. The span is emitted on every card, so min-height keeps
+     an empty one occupying its row instead of collapsing - that is what
+     lines the FOV row up across cards with and without a variant. The
+     height is one 12.5px line at this element's own line-height. */
+  min-height: 1.2em;
 }
 .result-card .spec-row {
   display: flex;
@@ -372,7 +377,17 @@ body.panel-hidden #panel { display: none; }
 .result-card .spec-row .spec-val { color: var(--text); font-weight: bold; }
 .result-card .badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: auto; }
 .badge {
-  display: inline-block;
+  /* inline-flex + a pinned line-height, not inline-block: the ✅ / 🚫 in the
+     OS 13 badge is an emoji with a taller line box than plain text, so on a
+     shared baseline OS13 and DLPU sat at different heights AND rendered at
+     different pill sizes. Centring each badge's content on its own axis with
+     the glyph's leading removed makes every badge the same height and puts
+     all their text on one line. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  min-height: 17px;
   font-size: 11px;
   padding: 2px 7px;
   border-radius: 10px;
@@ -460,3 +475,22 @@ button.sku-badge.copied {
   text-align: center;
   pointer-events: none;
 }
+
+/* OS 13 and compute capability on the result cards. Outlined like the
+   camera-class badges: both are lifecycle/capability qualifiers, not a
+   feature claim. Absence means Axis publishes no verdict we can stand
+   behind - never "no" - which is why there is no greyed "unknown" variant. */
+.badge.os13,
+.badge.compute {
+  background: transparent;
+  border: 1px solid currentColor;
+  cursor: help;
+}
+.badge.os13.yes { color: #2e7d32; }
+.badge.os13.no { color: #b23b3b; }
+.badge.compute.dlpu { color: #1f6fb2; }
+.badge.compute.mlpu { color: #7c3aed; }
+[data-theme="dark"] .badge.os13.yes { color: #7bc47f; }
+[data-theme="dark"] .badge.os13.no { color: #f08a8a; }
+[data-theme="dark"] .badge.compute.dlpu { color: #6fb6f0; }
+[data-theme="dark"] .badge.compute.mlpu { color: #b79af0; }

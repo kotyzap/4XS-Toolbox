@@ -96,6 +96,182 @@ function parseChipsets(html) {
   return { chipsets: result, conflicts, blockCount: n };
 }
 
+
+// ---------------------------------------------------------------------
+// AXIS OS 13 lifecycle refresh.
+//
+// Chipset generation does NOT decide OS 13 eligibility: the original AXIS
+// M1137 and the M1137 Mk II are both ARTPEC-7, yet only the Mk II reaches
+// OS 13. What settles it is whether Axis ever moved the product onto the
+// AXIS OS 12 track, and that is published per model on each product's own
+// support page. Newest build >= 12 means there is an OS 13 path; <= 11
+// means it was never moved over and there is none.
+//
+// os13-data.js ships a snapshot so the badges work offline and on first
+// run; this refresh re-checks only the models whose verdict actually came
+// from a firmware-track lookup (plus any still unknown). ARTPEC-8/9 and
+// CV25/CV75 are settled by platform alone and would burn a few hundred
+// requests a week for a verdict that cannot change.
+// ---------------------------------------------------------------------
+
+importScripts("os13-data.js"); // defines OS13_DATA
+
+// Axis publishes the exhaustive list of 32-bit products that will receive
+// AXIS OS 13 (help.axis.com/en-us/axis-os, Y2038 section). 64-bit products
+// are explicitly "not affected" and both tracks receive OS 13, so only
+// 32-bit hardware is gated on this list.
+const OS13_PUBLISHED_32BIT = new Set(["A1210","A1210-B","A1214","A1610","A1610-B","A1710-B","A1711",
+  "A1810-B","A1811","A9210","C1210-E","C1211-E","C1510","C1511","C1610-VE","C8110","C8210","F9104-B",
+  "F9111","F9114","F9114-B","I8016-LVE","M3057-PLR MK II","M4215-LV","M5000","M5000-G","M5074","M5075",
+  "M5075-G","M7104","M7116","P3818-PVE","P3925-LRE","P3925-R","P3935-LR","P5654-E","P5654-E MK II",
+  "P5655-E","P5676-LE","P7304","P7316","Q6074","Q6074-E","Q6075","Q6075-E","Q6075-S","Q6075-SE",
+  "Q6078-E","Q6135-LE","Q6225-LE","Q6315-LE","Q6318-LE","Q8615-E","Q8752-E","Q8752-E MK II","V5925",
+  "V5938","D201-S XPT Q6075","EXCAM XPT Q6075"]);
+
+const OS13_CONCURRENCY = 4;
+const OS13_MIN_SUCCESS_RATIO = 0.6; // below this, assume axis.com changed and keep the old data
+const OS13_MIN_AGE_MS = 1000 * 60 * 60 * 20; // don't re-harvest on every browser start
+
+// A handful of models are spelled differently in the URL than in
+// CamStreamer's model list (main units carry the "Main Unit" suffix; a few
+// entries are a series name whose page lives under a specific variant).
+// Verified by hand against axis.com - see tools/harvest-fw-tracks.md.
+const OS13_SLUG_ALIASES = {
+  "FA51": "axis-fa51-main-unit",
+  "FA54": "axis-fa54-main-unit",
+  "F9111": "axis-f9111-main-unit",
+  "F9114": "axis-f9114-main-unit",
+  "F9114-B": "axis-f9114-b-main-unit",
+  "M3077-PLE": "axis-m3077-plve",
+  "Q3515": "axis-q3515-lv",
+  "Q3517": "axis-q3517-lv",
+  "Q6135-LE PTZ": "axis-q6135-le",
+};
+
+function os13SupportUrl(model) {
+  const slug =
+    OS13_SLUG_ALIASES[model] ||
+    ("axis-" + model).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return "https://www.axis.com/products/" + slug + "/support";
+}
+
+// The "Device software" section lists every build offered, each tagged with
+// its track (e.g. "Version 12.11.147 - AXIS OS LTS 2026"). Take the highest
+// major.minor. Discontinued products also carry "AXIS OS support until <date>".
+function parseOs13SupportPage(html) {
+  const txt = html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>]+>/g, "\n");
+  // Tag stripping leaves newlines inside the sentence ("AXIS OS supported\n
+  // until 2031-12-31"), so the gap has to allow arbitrary whitespace - a
+  // single-space pattern silently returns no date on most pages.
+  const until = (txt.match(/AXIS OS support(?:ed)?\s+until\s+([0-9-]+)/) || [])[1] || null;
+  let best = null;
+  let bestKey = -1;
+  const versions = txt.match(/Version\s+\d+\.\d+\.\d+/g) || [];
+  for (const raw of versions) {
+    const v = raw.replace(/Version\s+/, "").trim();
+    const parts = v.split(".").map(Number);
+    const key = parts[0] * 1000 + parts[1];
+    if (key > bestKey) {
+      bestKey = key;
+      best = v;
+    }
+  }
+  if (!best) return null;
+  return { fw: best, major: Number(best.split(".")[0]), until };
+}
+
+async function refreshOs13Data(force) {
+  if (!force) {
+    const { os13UpdatedAt } = await chrome.storage.local.get(["os13UpdatedAt"]);
+    if (os13UpdatedAt && Date.now() - os13UpdatedAt < OS13_MIN_AGE_MS) {
+      return { skipped: true };
+    }
+  }
+
+  const base = (typeof OS13_DATA !== "undefined" && OS13_DATA.models) || {};
+  const models = {};
+  for (const key of Object.keys(base)) models[key] = Object.assign({}, base[key]);
+
+  const targets = Object.keys(base).filter(
+    (m) => base[m].s === "axis-support-page-fw-track" || base[m].v === "unknown"
+  );
+  if (!targets.length) throw new Error("No models to re-check - os13-data.js looks empty");
+
+  let ok = 0;
+  let missed = 0;
+  const queue = targets.slice();
+  await Promise.all(
+    Array.from({ length: OS13_CONCURRENCY }, async () => {
+      while (queue.length) {
+        const model = queue.shift();
+        try {
+          const res = await fetch(os13SupportUrl(model), { cache: "no-store" });
+          if (!res.ok) { missed++; continue; }
+          const parsed = parseOs13SupportPage(await res.text());
+          if (!parsed) { missed++; continue; }
+          const entry = models[model];
+          const plat = typeof entry.p === "string" ? entry.p : "";
+          const artpec6 = plat.indexOf("ARTPEC-6") === 0;
+          const known32 = entry.a === "armv7hf" || artpec6 || plat.indexOf("ARTPEC-7") === 0;
+          const published = OS13_PUBLISHED_32BIT.has(model.toUpperCase());
+
+          if (artpec6) {
+            // Axis states outright that OS 13 will not support ARTPEC-6.
+            // Those products DO still receive OS 12 - AXIS FA51 is on
+            // 12.11.147 - so the track alone would wrongly clear them.
+            entry.v = "no-os13";
+          } else if (published || parsed.major >= 13) {
+            // Either Axis named it, or a 13.x build is actually on the page.
+            entry.v = "os13";
+          } else if (known32 && parsed.major === 12) {
+            // On the current track, but absent from Axis's published 32-bit
+            // list. The two sources disagree, so state nothing - this
+            // promotes itself to os13 as soon as a 13.x build shows up.
+            entry.v = "unknown";
+          } else {
+            entry.v = parsed.major >= 12 ? "os13" : "no-os13";
+          }
+          entry.f = parsed.fw;
+          entry.s = "axis-support-page-fw-track";
+          if (parsed.until) entry.e = parsed.until.slice(0, 4);
+          ok++;
+        } catch (e) {
+          // A single unreachable product page must not fail the whole run -
+          // the ratio guard below decides whether the result is trustworthy.
+          missed++;
+        }
+      }
+    })
+  );
+
+  // A slug that 404s is normal (a handful of models are spelled differently
+  // on axis.com); a wholesale failure is not, and must not overwrite a good
+  // snapshot with a map full of stale verdicts.
+  if (ok / targets.length < OS13_MIN_SUCCESS_RATIO) {
+    throw new Error(
+      "Only " + ok + "/" + targets.length + " support pages parsed - keeping previous OS 13 data"
+    );
+  }
+
+  await chrome.storage.local.set({
+    os13Data: models,
+    os13UpdatedAt: Date.now(),
+    os13ModelCount: Object.keys(models).length,
+    os13CheckedCount: ok,
+    os13LastError: null,
+  });
+  return { checked: targets.length, ok, missed };
+}
+
+async function refreshOs13AndRecordError(force) {
+  try {
+    return await refreshOs13Data(force);
+  } catch (e) {
+    await chrome.storage.local.set({ os13LastError: String((e && e.message) || e) });
+    throw e;
+  }
+}
+
 async function refreshChipsetData() {
   const res = await fetch(CAMSTREAMER_URL, { cache: "no-store" });
   if (!res.ok) throw new Error("HTTP " + res.status + " fetching CamStreamer page");
@@ -188,12 +364,36 @@ async function injectIntoExistingTabs() {
   }
 }
 
+// Versions whose changes are worth interrupting someone for. A routine data
+// or fix release is left out, so updating does not train people to close this
+// tab reflexively - the point is that when it does open, it is because
+// something actually changed.
+const NEWS_VERSIONS = ["5.3"];
+
+async function maybeOpenSettings(reason) {
+  const version = chrome.runtime.getManifest().version;
+  if (reason === "install") {
+    await chrome.storage.local.set({ axisLastSeenVersion: version });
+    chrome.tabs.create({ url: chrome.runtime.getURL("options.html") });
+    return;
+  }
+  if (reason !== "update") return;
+  const { axisLastSeenVersion } = await chrome.storage.local.get(["axisLastSeenVersion"]);
+  if (axisLastSeenVersion === version) return;
+  await chrome.storage.local.set({ axisLastSeenVersion: version });
+  if (NEWS_VERSIONS.includes(version)) {
+    chrome.tabs.create({ url: chrome.runtime.getURL("options.html") });
+  }
+}
+
 chrome.runtime.onInstalled.addListener((details) => {
   chrome.alarms.create(REFRESH_ALARM, { periodInMinutes: 60 * 24 * 7 }); // weekly
   refreshAndRecordError().catch(() => {});
   refreshFxAndRecordError().catch(() => {});
+  refreshOs13AndRecordError(true).catch(() => {});
   if (details.reason === "install" || details.reason === "update") {
     injectIntoExistingTabs().catch(() => {});
+    maybeOpenSettings(details.reason).catch(() => {});
   }
 });
 
@@ -201,6 +401,9 @@ if (chrome.runtime.onStartup) {
   chrome.runtime.onStartup.addListener(() => {
     refreshAndRecordError().catch(() => {});
     refreshFxAndRecordError().catch(() => {});
+    // Not forced: OS13_MIN_AGE_MS keeps this from firing ~120 requests on
+    // every browser start.
+    refreshOs13AndRecordError(false).catch(() => {});
   });
 }
 
@@ -208,6 +411,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === REFRESH_ALARM) {
     refreshAndRecordError().catch(() => {});
     refreshFxAndRecordError().catch(() => {});
+    refreshOs13AndRecordError(true).catch(() => {});
   }
 });
 
@@ -261,6 +465,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .then((r) => sendResponse({ ok: true, ...r }))
       .catch((e) => sendResponse({ ok: false, error: String((e && e.message) || e) }));
     return true; // keep the message channel open for the async response
+  }
+  if (msg && msg.type === "REFRESH_OS13") {
+    refreshOs13AndRecordError(true)
+      .then((r) => sendResponse({ ok: true, ...r }))
+      .catch((e) => sendResponse({ ok: false, error: String((e && e.message) || e) }));
+    return true;
   }
   if (msg && msg.type === "REFRESH_FX") {
     refreshFxAndRecordError()

@@ -599,6 +599,218 @@
   }
 
   // ---------------------------------------------------------------------
+  // AXIS OS 13 verdict (os13-data.js, keys identical to
+  // CHIPSET_DATA.chipsets). The lookup here is EXACT ONLY - deliberately
+  // NOT lookupChipset()'s prefix/substring fallback. "M1137" and
+  // "M1137 Mk II" share one chipset bucket (ARTPEC-6/7) but not one OS 13
+  // verdict: the Mk II is ARTPEC-7 and upgrades, the original is ARTPEC-6
+  // and never will. A fuzzy hit would report the stranded model as fine,
+  // and telling an owner their camera upgrades when it cannot is the one
+  // error that costs money rather than time - see Preflight rule A9.
+  // Anything not matched exactly, or whose verdict is "unknown", gets no
+  // badge at all. No badge never reads as "no OS 13"; a wrong badge does.
+  // ---------------------------------------------------------------------
+
+  // os13-data.js is the bundled snapshot. background.js re-harvests the
+  // firmware tracks weekly into chrome.storage.local.os13Data and that
+  // overrides it live, the same way chipsetData overrides CHIPSET_DATA.
+  let OS13 = (typeof OS13_DATA !== "undefined" && OS13_DATA.models) || {};
+  const OS13_KEY = "axisShowOs13";
+  let showOs13 = true;
+
+  let os13Index = new Map();
+  function rebuildOs13Index() {
+    os13Index = new Map();
+    for (const key of Object.keys(OS13)) os13Index.set(normalizeBare(key), OS13[key]);
+  }
+  rebuildOs13Index();
+
+  // axis.com lists packaging, regional and optics variants as cards of their
+  // own: "AXIS Q6355-LE No Midspan", "AXIS M5000-G US", "AXIS Q1728 48 mm",
+  // "AXIS M3125-LVE Black". They are the same camera on the same firmware, so
+  // the verdict carries over - but ONLY when every extra token is packaging
+  // noise. "Mk II" is not noise: the M1137 and the M1137 Mk II are different
+  // products with opposite verdicts. That is exactly why this cannot reuse
+  // lookupChipset()'s prefix fallback, which would happily match them.
+  // Which trailing tokens may be trimmed when looking for the base model.
+  //
+  // Enumerating descriptors ("Camera", "Dome", "Corner", "Bispectral", ...)
+  // was a losing game - axis.com names cards from marketing copy. Inverted
+  // instead: an Axis model code ALWAYS carries a digit (Q8752-E, P3245-LVE,
+  // M12-free names like "Bispectral" never identify a product on their own),
+  // so a trailing token with no digit in it is decoration by construction.
+  // Digit-bearing tokens still need the explicit list below, because those
+  // are the ones that could be a model code.
+  //
+  // A Mk marker is excluded from both: "Mk II" is identity, not decoration.
+  // The original M1137 and the M1137 Mk II are different products with
+  // different OS 13 answers, so trimming "Mk II" would be the one error that
+  // costs the owner money (Preflight rule A9).
+  const OS13_MK_TOKEN = /^(?:MK|II|III|IV)$/;
+  const OS13_VARIANT_TOKEN = /^(?:\d+(?:\.\d+)?|\d+P|\d+HZ|M12|RJ45|I-CS|4K)$/;
+
+  function os13TrimmableToken(tok) {
+    if (OS13_MK_TOKEN.test(tok)) return false;
+    if (OS13_VARIANT_TOKEN.test(tok)) return true;
+    return !/\d/.test(tok);
+  }
+
+  function os13VariantOnly(rest) {
+    const tokens = rest.split(" ").filter(Boolean);
+    return tokens.length > 0 && tokens.every(os13TrimmableToken);
+  }
+
+  // Walk the name back a whole token at a time. Stop dead at the first token
+  // that is not packaging noise, so a non-variant suffix can never be trimmed
+  // away to reach a different product's entry.
+  function os13TrimVariant(norm) {
+    const tokens = norm.split(" ").filter(Boolean);
+    for (let i = tokens.length - 1; i > 0; i--) {
+      if (!os13VariantOnly(tokens.slice(i).join(" "))) return null;
+      const hit = os13Index.get(tokens.slice(0, i).join(" "));
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  // Raw entry, whatever its verdict. Used for the exact SoC, which is worth
+  // showing even when the OS 13 answer is unknown.
+  function os13Lookup(displayName) {
+    const norm = normalizeBare(displayName);
+    let entry = os13Index.get(norm);
+    if (!entry) {
+      // Same stainless/marine spelling fallback chipsetFor() uses.
+      const demarined = norm.replace(/-S([A-Z]+)\b/, "-$1");
+      if (demarined !== norm) entry = os13Index.get(demarined);
+    }
+    if (!entry) entry = os13TrimVariant(norm);
+    return entry || null;
+  }
+
+  function os13For(displayName) {
+    const entry = os13Lookup(displayName);
+    return entry && entry.v !== "unknown" ? entry : null;
+  }
+
+  // Axis's own SoC for this model ("ARTPEC-7", "ARTPEC-8 (x2)", "CV25"),
+  // where CamStreamer's data only has a collapsed bucket ("ARTPEC 6-9").
+  // DISPLAY ONLY: data-axis-chipset and the CamStreamer-support checkmark
+  // keep the bucket value, so chipset filtering and sorting are untouched.
+  function exactSocFor(displayName) {
+    const entry = displayName ? os13Lookup(displayName) : null;
+    return (entry && entry.p) || null;
+  }
+
+  // Aggregate (series) cards cover many models at once. Badge them only when
+  // every model agrees - a mixed series, or one holding any unknown, gets
+  // nothing rather than a verdict that is wrong for half of it.
+  function os13ForNames(names) {
+    if (!names || !names.length) return null;
+    let agreed = null;
+    for (const name of names) {
+      const entry = os13For(name);
+      if (!entry) return null;
+      if (agreed && agreed.v !== entry.v) return null;
+      agreed = agreed || entry;
+    }
+    return agreed;
+  }
+
+  function buildOs13Badge(entry, className) {
+    const ok = entry.v === "os13";
+    const span = document.createElement("span");
+    span.className = className + (ok ? " is-os13" : " is-no-os13");
+    span.textContent = ok ? "OS13 \u2705" : "OS13 \uD83D\uDEAB";
+    const parts = [ok
+      ? t("os13TooltipYes", "AXIS OS 13 supported")
+      : t("os13TooltipNo", "No AXIS OS 13 for this hardware - this camera stays on its current firmware")];
+    if (entry.p) parts.push(entry.p);
+    if (entry.e) parts.push(t("os13TooltipEofw", "firmware support until ") + entry.e);
+    span.title = parts.join(" - ");
+    return span;
+  }
+
+  function appendOs13Badge(row, displayName, className) {
+    if (!showOs13) return;
+    const entry = os13For(displayName);
+    if (entry) row.appendChild(buildOs13Badge(entry, className));
+  }
+
+  // ---------------------------------------------------------------------
+  // Compute capability (compute-data.js): DLPU / MLPU / none, from Axis's
+  // Q4 2026 comparison tables. NOT derivable from the chipset - ARTPEC-7 is
+  // mixed (2 DLPU, 4 MLPU, 11 none) and the S6LM onboard cameras are current
+  // products with no compute unit at all. A model absent from that table
+  // gets no badge rather than a guess, same rule as the OS 13 verdict.
+  // Shares the OS 13 name matching, including its Mk-marker guard.
+  // ---------------------------------------------------------------------
+
+  const COMPUTE = (typeof COMPUTE_DATA !== "undefined" && COMPUTE_DATA.models) || {};
+  const COMPUTE_KEY = "axisShowCompute";
+  let showCompute = true;
+
+  const computeIndex = new Map();
+  for (const key of Object.keys(COMPUTE)) computeIndex.set(normalizeBare(key), COMPUTE[key]);
+
+  function computeFor(displayName) {
+    const norm = normalizeBare(displayName);
+    let code = computeIndex.get(norm);
+    if (!code) {
+      const demarined = norm.replace(/-S([A-Z]+)\b/, "-$1");
+      if (demarined !== norm) code = computeIndex.get(demarined);
+    }
+    if (!code) {
+      const toks = norm.split(" ").filter(Boolean);
+      for (let i = toks.length - 1; i > 0 && !code; i--) {
+        if (!toks.slice(i).every(os13TrimmableToken)) break;
+        code = computeIndex.get(toks.slice(0, i).join(" "));
+      }
+    }
+    return code || null;
+  }
+
+  const COMPUTE_TEXT = { d: "DLPU", m: "MLPU", n: "NO DLPU" };
+  const COMPUTE_TIP = {
+    d: "Deep learning processing unit - runs deep-learning models on the camera",
+    m: "Machine learning processing unit - lighter than a DLPU, no deep-learning models",
+    n: "No machine-learning compute unit on this camera",
+  };
+
+  function buildComputeBadge(code, className) {
+    const span = document.createElement("span");
+    span.className =
+      className + (code === "d" ? " is-dlpu" : code === "m" ? " is-mlpu" : " is-nocompute");
+    span.textContent = COMPUTE_TEXT[code];
+    span.title =
+      t("computeTooltip" + code.toUpperCase(), COMPUTE_TIP[code]) +
+      t("computeTooltipSource", " (Axis comparison tables, Q4 2026)");
+    return span;
+  }
+
+  // Series aggregate, same unanimity rule as os13ForNames: a DLPU/MLPU badge
+  // on a heading that covers many models is only honest when every model in
+  // it has the same compute unit. One unknown model and the series gets
+  // nothing, because "DLPU" on a series where one camera has none is the
+  // kind of wrong that costs a sale.
+  function computeForNames(names) {
+    if (!names || !names.length) return null;
+    let agreed = null;
+    for (const name of names) {
+      const code = computeFor(name);
+      if (!code) return null;
+      if (agreed && agreed !== code) return null;
+      agreed = agreed || code;
+    }
+    return agreed;
+  }
+
+  function appendComputeBadge(row, displayName, className) {
+    if (!showCompute) return;
+    const code = computeFor(displayName);
+    if (code) row.appendChild(buildComputeBadge(code, className));
+  }
+
+  // ---------------------------------------------------------------------
   // Field-of-view matching (fov-data.js - starts empty, populated over time;
   // see that file's header comment for how entries get added)
   // ---------------------------------------------------------------------
@@ -676,6 +888,15 @@
   // needs it too.
   const CAMSTREAMER_ACAPS_PRESET = ["ARTPEC-9", "ARTPEC-8", "ARTPEC-6/7"];
 
+  // A label naming a RANGE rather than a chip ("ARTPEC-6/7"). It carries no
+  // chipset information - that set is exactly CAMSTREAMER_ACAPS_PRESET - so
+  // where Axis has not published the real SoC we show what we actually know:
+  // CamStreamer app support.
+  function isChipsetGroupLabel(label) {
+    return label.indexOf("/") !== -1 || /\s\d-\d$/.test(label);
+  }
+
+
   // One row per model+variant, carrying just what the map-filter match needs:
   // the bare (normalized, "AXIS " stripped) model name that card.dataset.axisModel
   // is set to, plus the coverable angle and CamStreamer support flag.
@@ -751,10 +972,16 @@
   let sortEnabled = loadBoolSetting("axisSortSeriesV1", true);
   // Always on now - no longer user-configurable (was a checkbox in the panel).
   const hideEmptySeries = true;
-  // "Hide Chipsets" - hides only the visible chipset badge (like the
+  // "Hide chipsets" - hides only the visible chipset badge (like the
   // currency toggle's "hide prices" OFF state does for prices). Filtering
   // and sorting still work off data-axis-chipset, which is set either way.
-  let chipsetsHidden = loadBoolSetting("axisChipsetsHiddenV1", false);
+  // Moved from localStorage to chrome.storage.local: localStorage here is
+  // axis.com's origin, which an extension page (options.html) cannot read or
+  // write, so the settings page could never have driven this. The old key is
+  // migrated once, below, and then left alone.
+  const CHIPSETS_HIDDEN_KEY = "axisChipsetsHidden";
+  const CHIPSETS_HIDDEN_LEGACY = "axisChipsetsHiddenV1";
+  let chipsetsHidden = loadBoolSetting(CHIPSETS_HIDDEN_LEGACY, false);
   let originalSeriesOrder = null;
 
   // No stable "series wrapper" class/link exists anymore (see note above),
@@ -865,12 +1092,41 @@
     });
   }
 
+  // Mirrors applyChipsetLabel()'s add/update/remove lifecycle so a card
+  // re-rendered on filter or sort keeps exactly one OS 13 badge.
+  function applyOs13Label(card, name) {
+    const entry = showOs13 ? os13For(name) : null;
+    let el = card.querySelector(".axis-os13-badge");
+    if (!entry) {
+      if (el) el.remove();
+      return;
+    }
+    const fresh = buildOs13Badge(entry, "axis-os13-badge");
+    if (el) el.replaceWith(fresh);
+    else getImgContainer(card).appendChild(fresh);
+  }
+
+  // Mirrors applyOs13Label()'s add/update/remove lifecycle.
+  function applyComputeLabel(card, name) {
+    const code = showCompute ? computeFor(name) : null;
+    let el = card.querySelector(".axis-compute-badge");
+    if (!code) {
+      if (el) el.remove();
+      return;
+    }
+    const fresh = buildComputeBadge(code, "axis-compute-badge");
+    if (el) el.replaceWith(fresh);
+    else getImgContainer(card).appendChild(fresh);
+  }
+
   function applyChipsetLabel(card, name) {
     const label = chipsetFor(name);
     let el = card.querySelector(".axis-chipset-badge");
     if (!label) {
       if (el) el.remove();
       card.removeAttribute("data-axis-chipset");
+      applyOs13Label(card, name);
+      applyComputeLabel(card, name);
       return;
     }
     if (chipsetsHidden) {
@@ -878,6 +1134,8 @@
       // the visible badge itself is suppressed.
       if (el) el.remove();
       card.setAttribute("data-axis-chipset", label);
+      applyOs13Label(card, name);
+      applyComputeLabel(card, name);
       return;
     }
     if (!el) {
@@ -890,11 +1148,24 @@
     // glance, so CamStreamer ACAPs support (ARTPEC-9/8/6-7) is flagged with
     // a checkmark appended to the label text instead.
     const acapSupported = CAMSTREAMER_ACAPS_PRESET.includes(label);
-    el.textContent = acapSupported ? label + " ✅" : label;
-    el.title =
-      t("chipsetTooltipPrefix", "Chipset (via CamStreamer app-compatibility data): ") + label +
-      (acapSupported ? t("chipsetTooltipCsSuffix", " — CamStreamer Support") : "");
+    // Axis's exact SoC when known; the bucket otherwise. Display only -
+    // data-axis-chipset below keeps the bucket so filtering/sorting work.
+    const exact = exactSocFor(name);
+    const asSupport = !exact && acapSupported && isChipsetGroupLabel(label);
+    el.textContent = (exact || (asSupport ? "CamStreamer" : label)) +
+      (acapSupported ? " ✅" : "");
+    el.title = exact
+      ? t("chipsetTooltipExact", "System-on-chip (via Axis product data): ") + exact +
+          (acapSupported ? t("chipsetTooltipCsSuffix", " — CamStreamer Support") : "")
+      : asSupport
+        ? t("chipsetTooltipSupport",
+            "Runs CamStreamer apps. Axis does not publish the exact chipset for this " +
+            "model; CamStreamer only groups it as ") + label
+        : t("chipsetTooltipPrefix", "Chipset (via CamStreamer app-compatibility data): ") + label +
+            (acapSupported ? t("chipsetTooltipCsSuffix", " — CamStreamer Support") : "");
     card.setAttribute("data-axis-chipset", label);
+    applyOs13Label(card, name);
+    applyComputeLabel(card, name);
   }
 
   // Re-applies every already-processed card's chipset badge under the
@@ -1165,7 +1436,9 @@
 
     const badge = !pricesHidden() ? priceBadgeFor(name) : null;
     const chipsetLabel = !chipsetsHidden ? chipsetFor(name) : null;
-    if (!badge && !chipsetLabel) {
+    const os13Entry = showOs13 ? os13For(name) : null;
+    const computeCode = showCompute ? computeFor(name) : null;
+    if (!badge && !chipsetLabel && !os13Entry && !computeCode) {
       if (existingRow) existingRow.remove();
       return;
     }
@@ -1179,13 +1452,23 @@
     row.innerHTML = "";
     if (chipsetLabel) {
       const acap = CAMSTREAMER_ACAPS_PRESET.includes(chipsetLabel);
+      const exact = exactSocFor(name);
+      const asSupport = !exact && acap && isChipsetGroupLabel(chipsetLabel);
       const span = document.createElement("span");
       span.className = "axis-product-chipset-badge";
-      span.textContent = acap ? chipsetLabel + " ✅" : chipsetLabel;
-      span.title =
-        t("chipsetTooltipPrefix", "Chipset (via CamStreamer app-compatibility data): ") + chipsetLabel;
+      span.textContent = (exact || (asSupport ? "CamStreamer" : chipsetLabel)) +
+        (acap ? " ✅" : "");
+      span.title = exact
+        ? t("chipsetTooltipExact", "System-on-chip (via Axis product data): ") + exact
+        : asSupport
+          ? t("chipsetTooltipSupport",
+              "Runs CamStreamer apps. Axis does not publish the exact chipset for this " +
+              "model; CamStreamer only groups it as ") + chipsetLabel
+          : t("chipsetTooltipPrefix", "Chipset (via CamStreamer app-compatibility data): ") + chipsetLabel;
       row.appendChild(span);
     }
+    appendOs13Badge(row, name, "axis-product-os13-badge");
+    appendComputeBadge(row, name, "axis-product-compute-badge");
     if (badge) {
       const span = document.createElement("span");
       span.className = "axis-product-price-badge";
@@ -1329,10 +1612,24 @@
   // and whenever it refreshes later (weekly alarm or "Update chipset data" in the popup).
   // Also pick up the currency choice made in the popup (default EUR).
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(["chipsetData", "axisCurrency", "catalogOverride", "fxRates", FAVORITES_KEY, CATEGORIES_KEY], (res) => {
+    chrome.storage.local.get(["chipsetData", "axisCurrency", "catalogOverride", "fxRates", "os13Data", OS13_KEY, COMPUTE_KEY, CHIPSETS_HIDDEN_KEY, FAVORITES_KEY, CATEGORIES_KEY], (res) => {
       if (res && res.chipsetData && Object.keys(res.chipsetData).length > 0) {
         CHIPSETS = res.chipsetData;
         rebuildChipsetIndex();
+      }
+      if (res && res.os13Data && Object.keys(res.os13Data).length > 0) {
+        OS13 = res.os13Data;
+        rebuildOs13Index();
+      }
+      // Default ON - absent key means never toggled, not opted out.
+      if (res && res[OS13_KEY] === false) showOs13 = false;
+      if (res && res[COMPUTE_KEY] === false) showCompute = false;
+      // One-time migration: if the new key has never been written, seed it
+      // from whatever this origin's localStorage already had.
+      if (res && typeof res[CHIPSETS_HIDDEN_KEY] === "boolean") {
+        chipsetsHidden = res[CHIPSETS_HIDDEN_KEY];
+      } else if (chipsetsHidden) {
+        chrome.storage.local.set({ [CHIPSETS_HIDDEN_KEY]: true });
       }
       if (res && Array.isArray(res[FAVORITES_KEY])) favorites = new Set(res[FAVORITES_KEY]);
       if (res && Array.isArray(res[CATEGORIES_KEY])) {
@@ -1368,9 +1665,34 @@
           favoriteCategories = Array.isArray(changes[CATEGORIES_KEY].newValue) ? changes[CATEGORIES_KEY].newValue : [];
           renderQuickLinks();
         }
+        if (changes[CHIPSETS_HIDDEN_KEY]) {
+          chipsetsHidden = changes[CHIPSETS_HIDDEN_KEY].newValue === true;
+          refreshChipsetBadges();
+        }
+        if (changes[COMPUTE_KEY]) {
+          showCompute = changes[COMPUTE_KEY].newValue !== false;
+          refreshChipsetBadges();
+          teardownComparisonTable2();
+          injectAll(document);
+        }
+        if (changes[OS13_KEY]) {
+          showOs13 = changes[OS13_KEY].newValue !== false;
+          // refreshChipsetBadges() re-runs applyChipsetLabel() per card,
+          // which drives applyOs13Label() - no separate pass needed.
+          refreshChipsetBadges();
+          teardownComparisonTable2();
+          injectAll(document);
+        }
         if (changes.chipsetData) {
           CHIPSETS = changes.chipsetData.newValue || {};
           rebuildChipsetIndex();
+          teardownComparisonTable2();
+          injectAll(document);
+        }
+        if (changes.os13Data) {
+          OS13 = changes.os13Data.newValue || {};
+          rebuildOs13Index();
+          refreshChipsetBadges();
           teardownComparisonTable2();
           injectAll(document);
         }
@@ -1522,6 +1844,33 @@
       localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify([...set]));
     } catch (e) {
       /* ignore quota/availability errors */
+    }
+  }
+
+  // Ticking "Hide chipsets" clears the chipset filter (filtering by something
+  // you have just hidden reads as contradictory). Un-ticking it used to leave
+  // you with an empty filter and no way back to the selection you had, so the
+  // cleared set is parked here and handed back on un-tick. Persisted rather
+  // than held in memory so it also survives a page reload while hidden.
+  const FILTER_STASH_KEY = FILTER_STORAGE_KEY + "StashV1";
+
+  function stashCheckedSet(set) {
+    try {
+      localStorage.setItem(FILTER_STASH_KEY, JSON.stringify([...set]));
+    } catch (e) {
+      /* ignore quota/availability errors */
+    }
+  }
+
+  function takeStashedCheckedSet() {
+    try {
+      const raw = localStorage.getItem(FILTER_STASH_KEY);
+      localStorage.removeItem(FILTER_STASH_KEY);
+      if (!raw) return null;
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) && arr.length ? new Set(arr) : null;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -2000,39 +2349,130 @@
       list.appendChild(row);
     }
 
-    // "Hide Chipsets" - not a filter (doesn't touch checkedChipsets/which
-    // cards show), just hides the visible chipset badge on every card. The
-    // one place per-card price-hiding lives (currentCurrency === "OFF") is
-    // page-global via the popup's currency toggle; this is the equivalent
-    // for chipsets, but local to this panel since there's no separate
-    // "chipset currency" concept to hang it off of.
-    const hideChipsetsRow = document.createElement("label");
-    hideChipsetsRow.className = "axis-chipset-panel-row";
-    const hideChipsetsCb = document.createElement("input");
-    hideChipsetsCb.type = "checkbox";
-    hideChipsetsCb.checked = chipsetsHidden;
-    hideChipsetsCb.addEventListener("change", () => {
-      chipsetsHidden = hideChipsetsCb.checked;
-      saveBoolSetting("axisChipsetsHiddenV1", chipsetsHidden);
-      // Hiding the badge while a chipset filter is still narrowing the page
-      // down reads as contradictory (why would you filter by something
-      // you've just hidden?), so checking this clears every chipset
-      // checkbox above it back to "show everything".
-      if (chipsetsHidden && checkedChipsets.size > 0) {
-        checkedChipsets.clear();
-        saveCheckedSet(checkedChipsets);
-        syncGroupCheckboxes();
-        applyFilterAndResort();
-        updateCount();
-      }
-      refreshChipsetBadges();
+    // Collapsible "Display" section. None of these are filters - they don't
+    // touch checkedChipsets or which cards show, they only control which
+    // badges get drawn. Grouped and collapsed because three loose
+    // checkboxes under the chipset filters read as four more filters.
+    const display = document.createElement("details");
+    display.className = "axis-chipset-panel-display";
+    display.open = loadBoolSetting("axisDisplayPanelOpenV1", false);
+    display.addEventListener("toggle", () => {
+      saveBoolSetting("axisDisplayPanelOpenV1", display.open);
     });
-    const hideChipsetsSpan = document.createElement("span");
-    hideChipsetsSpan.textContent = t("hideChipsetsLabel", "Hide Chipsets");
-    hideChipsetsRow.title = t("hideChipsetsTitle", "Hide the chipset badge on every card - filtering by chipset above still works");
-    hideChipsetsRow.appendChild(hideChipsetsCb);
-    hideChipsetsRow.appendChild(hideChipsetsSpan);
-    list.appendChild(hideChipsetsRow);
+    const displaySummary = document.createElement("summary");
+    displaySummary.textContent = t("displaySectionLabel", "Display");
+    display.appendChild(displaySummary);
+
+    function addHideRow(labelText, titleText, checked, onChange) {
+      const row = document.createElement("label");
+      row.className = "axis-chipset-panel-row";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = checked;
+      cb.addEventListener("change", () => onChange(cb.checked));
+      const span = document.createElement("span");
+      span.textContent = labelText;
+      row.title = titleText;
+      row.appendChild(cb);
+      row.appendChild(span);
+      display.appendChild(row);
+      return cb;
+    }
+
+    addHideRow(
+      t("hideChipsetsLabel", "Hide chipsets"),
+      t("hideChipsetsTitle", "Hide the chipset badge on every card - filtering by chipset above still works"),
+      chipsetsHidden,
+      (checked) => {
+        chipsetsHidden = checked;
+        saveBoolSetting(CHIPSETS_HIDDEN_LEGACY, chipsetsHidden); // keep the old key in step
+        if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ [CHIPSETS_HIDDEN_KEY]: chipsetsHidden });
+        }
+        // Hiding the badge while a chipset filter is still narrowing the page
+        // down reads as contradictory, so checking this clears every chipset
+        // checkbox above it back to "show everything".
+        if (chipsetsHidden) {
+          if (checkedChipsets.size > 0) {
+            stashCheckedSet(checkedChipsets);
+            checkedChipsets.clear();
+            saveCheckedSet(checkedChipsets);
+            syncGroupCheckboxes();
+            applyFilterAndResort();
+            updateCount();
+          }
+        } else {
+          // Un-ticked: hand back whatever was cleared on the way in.
+          const restored = takeStashedCheckedSet();
+          if (restored) {
+            checkedChipsets = restored;
+            saveCheckedSet(checkedChipsets);
+            syncGroupCheckboxes();
+            applyFilterAndResort();
+            updateCount();
+          }
+        }
+        refreshChipsetBadges();
+      }
+    );
+
+    // Shares axisShowOs13 with the popup toggle, so the two never disagree.
+    addHideRow(
+      t("hideOs13Label", "Hide AXIS OS 13"),
+      t("hideOs13Title", "Hide the OS 13 badge on every card - same setting as the toggle in the extension popup"),
+      !showOs13,
+      (checked) => {
+        showOs13 = !checked;
+        if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ [OS13_KEY]: showOs13 });
+        }
+        refreshChipsetBadges();
+      }
+    );
+
+    addHideRow(
+      t("hideComputeLabel", "Hide DLPU / MLPU"),
+      t("hideComputeTitle",
+        "Hide the compute-capability badge. Axis already shows this as "
+        + "\"Analytics compute capability\" in most series comparison tables, "
+        + "but not all of them - the M11 series has no such row."),
+      !showCompute,
+      (checked) => {
+        showCompute = !checked;
+        if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ [COMPUTE_KEY]: showCompute });
+        }
+        refreshChipsetBadges();
+      }
+    );
+
+    // Price hiding already exists as currency "OFF" (the popup's secondary
+    // currency button), so this drives that same setting rather than adding
+    // a second, competing notion of hidden prices. The previous currency is
+    // remembered so unchecking restores it instead of guessing EUR.
+    addHideRow(
+      t("hidePricesLabel", "Hide prices"),
+      t("hidePricesTitle", "Hide the price badge on every card - same as the currency OFF button in the extension popup"),
+      pricesHidden(),
+      (checked) => {
+        if (!(typeof chrome !== "undefined" && chrome.storage && chrome.storage.local)) return;
+        if (checked) {
+          if (currentCurrency !== "OFF") {
+            chrome.storage.local.set({ axisCurrencyBeforeOff: currentCurrency });
+          }
+          chrome.storage.local.set({ axisCurrency: "OFF" });
+        } else {
+          chrome.storage.local.get(["axisCurrencyBeforeOff"], (r) => {
+            const restored = (r && r.axisCurrencyBeforeOff) || "EUR";
+            chrome.storage.local.set({ axisCurrency: restored === "OFF" ? "EUR" : restored });
+          });
+        }
+        // The storage.onChanged listener below updates currentCurrency and
+        // re-renders, so there is nothing to refresh here.
+      }
+    );
+
+    list.appendChild(display);
 
     rightCol.appendChild(list);
 

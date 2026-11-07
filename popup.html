@@ -139,6 +139,11 @@
     /* Not a click target as a whole any more: the text fields copy their own
        value and the heart alone toggles the favorite. */
     cursor: default;
+    /* Contains the floated .badges block. Without this the row is only as
+       tall as its text column (model + meta), while the badge block needs
+       two lines - so the OS 13 / compute line spilled over the divider and
+       read as belonging to the next row. */
+    display: flow-root;
   }
   /* Click-to-copy fields, same affordance as find-cams' .fc-copy. */
   .row .copy { cursor: copy; }
@@ -699,15 +704,17 @@
     padding: 10px 14px;
     border-top: 1px solid var(--border);
   }
+  /* Label, slider and value on one line. The slider used to take a line of
+     its own below the label, which cost ~22px of a fixed-height popup for
+     no information - the list below is what that space is for. */
   .angle-label-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
     font-size: 12px;
     font-weight: 600;
-    margin-bottom: 4px;
   }
+  #angleFieldLabel { flex: 0 0 auto; }
   .angle-value-group {
     display: flex;
     align-items: center;
@@ -736,7 +743,11 @@
     margin: 0;
   }
   #angleSlider {
-    width: 100%;
+    /* Takes the slack between the label and the value. min-width:0 because
+       a flex item will not shrink below its intrinsic width without it, and
+       a range input's intrinsic width would push the value group off. */
+    flex: 1 1 auto;
+    min-width: 0;
     accent-color: var(--accent);
     cursor: pointer;
   }
@@ -756,23 +767,10 @@
   }
   .axis-fovmap-camera-icon:active { cursor: grabbing; }
 
-  /* Advanced/info drawer - Currency, FX rates, the chipset-data update row,
-     the monthly price-override link, and the footer disclaimer are useful
-     but noisy for a quick lookup, so they're all collapsed behind
-     #advancedBtn by default rather than always shown. Gated on body NOT
-     having .axis-advanced-visible (rather than an unconditional display:none
-     on these IDs) so that once the class is added, JS setting
-     style.display = "" actually falls back to each element's own default
-     display (block, or flex for .currency-section) instead of continuing to
-     match a `display:none` rule at equal specificity. */
-  body:not(.axis-advanced-visible) #fxSection,
-  body:not(.axis-advanced-visible) #chipsetSection,
-  body:not(.axis-advanced-visible) #footerSection,
-  body:not(.axis-advanced-visible) #currencySection,
-  body:not(.axis-advanced-visible) #monthlySection,
-  body:not(.axis-advanced-visible) #languageSection {
-    display: none;
-  }
+  /* The advanced drawer's four update rows and the disclaimer moved to the
+     Settings page (options.html) - #advancedBtn opens it now. What is left
+     in the drawer is Language and Currency, which stay in the popup because
+     they change what the list in front of you shows. */
   .language-flags {
     /* 12 flags as two even rows of six (a wrapping flexbox fell 7 + 5). */
     display: grid;
@@ -792,20 +790,6 @@
   .language-flags button.active {
     border-color: var(--accent-strong);
     background: rgba(255, 204, 51, 0.25);
-  }
-  #monthlySection #settingsBtn {
-    border: 1px solid var(--accent-strong);
-    background: rgba(255, 204, 51, 0.2);
-    color: var(--accent-ink);
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  #monthlySection #settingsBtn:hover {
-    background: var(--accent);
   }
   #advancedBtn.active {
     background: var(--accent);
@@ -885,6 +869,135 @@ html[data-theme="dark"] .axis-map-nobasemap-note {
   background: rgba(30, 30, 30, 0.94);
   color: #f0f0f0;
 }
+
+    /* OS 13 row carries two controls (Update + On/Off) where the other
+       settings rows carry one - keep them from colliding. */
+    .os13-buttons { display: inline-flex; gap: 6px; align-items: center; }
+
+    /* AXIS OS 13 pill in the catalogue rows. Floated right like .chipset and
+       .price, because this row lays its columns out with floats, not flex -
+       an unfloated pill drops into normal flow and shoves the model name onto
+       a second line. Fixed width for the same reason the others have one: two
+       variable-width floats can never share a stable left edge.
+       ".os13.none" is an invisible spacer so rows without a verdict keep the
+       chipset and price columns aligned with the rows that have one. */
+    .row .os13, .os13 {
+      float: right;
+      display: inline-block;
+      margin-right: 6px;
+      padding: 1px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      min-width: 58px;
+      text-align: left;
+    }
+    /* Tinted and outlined rather than filled, matching toolbox.4xs.dev's
+       catalogue. Nearly every model in this list is OS 13 with a DLPU, so a
+       saturated chip on almost every row is noise that buries the thing
+       worth seeing - the exceptions. Low weight by default lets a 🚫 or an
+       MLPU stand out by contrast.
+       The badges injected onto axis.com (content.css, products-content.css,
+       search-content.css) deliberately stay saturated: those have to win
+       against Axis's own page design, where a light tint would vanish.
+       The outline is an inset shadow, not a border, so it cannot change the
+       pill's box and shift these float:right columns. */
+    .os13.yes  { background: #eef6ee; color: #4b8a50; box-shadow: inset 0 0 0 1px currentColor; }
+    .os13.no   { background: #fbeeee; color: #b05454; box-shadow: inset 0 0 0 1px currentColor; }
+    .os13.none { background: transparent; box-shadow: none; }
+    [data-theme="dark"] .os13.yes { background: rgba(123, 196, 127, 0.12); color: #8fcf93; }
+    [data-theme="dark"] .os13.no  { background: rgba(240, 138, 138, 0.12); color: #f09a9a; }
+
+    /* Compute-capability pill, floated like .os13 / .chipset / .price so the
+       row keeps its column alignment. ".compute.none" is an invisible spacer
+       for rows we have no compute data for. */
+    .row .compute, .compute {
+      float: right; display: inline-block; margin-right: 6px; padding: 1px 8px;
+      border-radius: 3px; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+      white-space: nowrap; min-width: 54px; text-align: left;
+    }
+    .compute.dlpu { background: #eaf2fa; color: #477fb3; box-shadow: inset 0 0 0 1px currentColor; }
+    .compute.mlpu { background: #f3edfc; color: #8a63c9; box-shadow: inset 0 0 0 1px currentColor; }
+    .compute.nope { background: #f2f2f2; color: #8a8a8a; box-shadow: inset 0 0 0 1px currentColor; }
+    .compute.none { background: transparent; box-shadow: none; }
+    /* Same invisible-spacer idea for a model Axis publishes no chipset for:
+       the column stays, so the price keeps its place at the right of line 1
+       and the OS 13 / compute pills stay on line 2. */
+    .chipset.none { background: transparent; box-shadow: none; }
+    [data-theme="dark"] .compute.dlpu { background: rgba(111, 182, 240, 0.12); color: #85c2f2; }
+    [data-theme="dark"] .compute.mlpu { background: rgba(167, 139, 230, 0.12); color: #b79af0; }
+    [data-theme="dark"] .compute.nope { background: rgba(168, 168, 168, 0.12); color: #a8a8a8; }
+
+    /* Catalogue-row badge block: the chipset / OS 13 / compute pills share
+       one line, and the price takes the line below it on its own, which is
+       what lets the price be the biggest thing in the block - it is the
+       number people actually scan for.
+       A flex row that wraps, not a fixed grid: the three pills are optional
+       (Settings switches each one off independently), so the ones that are
+       left have to close ranks to the left instead of leaving a hole where
+       a disabled badge used to be. --badges-w is set by popup.js from the
+       switched-on set, so every row still reserves exactly the same width
+       and the pills line up down the list. */
+    .row .badges {
+      float: right;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: center;
+      gap: 3px 4px;
+      width: var(--badges-w, 192px);
+      margin-left: 10px;
+    }
+    /* Inside the block the pills are flex items, not floats. Fixed widths,
+       because that is what lines them up from row to row - measured
+       headlessly against every label these three can render. `order` puts
+       the chipset and the price on the first line and the OS 13 and compute
+       pills on the second, whichever of them are switched on: flex-wrap
+       packs whatever is left to the left instead of leaving a gap. */
+    .row .badges > .chipset,
+    .row .badges > .os13,
+    .row .badges > .compute,
+    .row .badges > .price {
+      float: none;
+      margin-right: 0;
+      min-width: 0;
+      box-sizing: border-box;
+      font-size: 10px;
+      padding: 1px 6px;
+      /* Centred as a flex line rather than left to the text baseline: the
+         ✅ / 🚫 in the OS 13 pill is an emoji with a taller line box than
+         plain text, so on a shared baseline "OS13" and "DLPU" sat at
+         different heights. line-height:1 takes the glyph's own leading out
+         of it so both pills centre on the same axis. */
+      display: flex;
+      align-items: center;
+      line-height: 1;
+    }
+    /* 92px covers every chipset label but the two-SoC ones ("ARTPEC-8 (x2)
+       ✅", 113px). Those ellipsize rather than clip, and the pill's title
+       already carries the full value. */
+    .row .badges > .chipset {
+      order: 1; width: 92px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .row .badges > .os13    { order: 3; width: 68px; }
+    .row .badges > .compute { order: 4; width: 72px; }
+    /* The price is the value people scan this list for, so it is the one
+       thing here set bigger than the pills, and margin-left:auto parks it at
+       the right end of the first line. */
+    .row .badges > .price {
+      order: 2;
+      width: 96px;
+      margin-left: auto;
+      font-size: 13px;
+      padding: 1px 7px;
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* A row with no price of its own keeps the cell, so the rows that do
+       have one stay aligned. With prices switched off entirely the cell is
+       not rendered at all - every row loses it together. */
+    .row .badges > .price.none { background: transparent; }
 </style>
 </head>
 <body>
@@ -894,7 +1007,7 @@ html[data-theme="dark"] .axis-map-nobasemap-note {
       <div class="sub" id="countLabel">loading…</div>
     </div>
     <div class="header-actions">
-      <button id="advancedBtn" title="Show/hide currency, FX rates, chipset update info, monthly price updates, and the price disclaimer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"></circle><circle cx="12" cy="12" r="7.4"></circle><path d="M12 2.6v2.4M12 19v2.4M21.4 12h-2.4M5 12H2.6M18.2 5.8l-1.7 1.7M7.5 16.7l-1.7 1.7M18.2 18.2l-1.7-1.7M7.5 7.3 5.8 5.6"></path></svg></button>
+      <button id="advancedBtn" title="Open Settings — badges, currency, language, data updates and the price disclaimer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"></circle><circle cx="12" cy="12" r="7.4"></circle><path d="M12 2.6v2.4M12 19v2.4M21.4 12h-2.4M5 12H2.6M18.2 5.8l-1.7 1.7M7.5 16.7l-1.7 1.7M18.2 18.2l-1.7-1.7M7.5 7.3 5.8 5.6"></path></svg></button>
       <button id="themeToggle" title="Toggle light/dark theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"></path></svg></button>
       <button id="kofiBtn" title="Buy Pavel a coffee — support this extension"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 9h12v6.5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9z"></path><path d="M17.5 10.5H19a2.5 2.5 0 0 1 0 5h-1.5"></path><path d="M9 5c0 .9-.7 1-.7 2M13 5c0 .9-.7 1-.7 2"></path></svg></button>
     </div>
@@ -904,43 +1017,10 @@ html[data-theme="dark"] .axis-map-nobasemap-note {
        disclaimer text. Opening/closing #advancedBtn expands/collapses this
        whole block, pushing the always-visible view tabs (and whichever
        view is active) further down rather than sitting between them. -->
-  <div class="chipset-section" id="languageSection">
-    <span class="label" id="languageLabel">Language</span>
-    <div class="language-flags" id="languageFlags"></div>
-  </div>
-  <div class="currency-section" id="currencySection">
-    <span class="label" id="currencyLabel">Currency</span>
-    <div class="currency-toggle">
-      <button id="currencyUSD">$ USD</button>
-      <button id="currencyEUR" class="active">€ EUR</button>
-      <button id="currencyGBP">£ GBP</button>
-      <button id="currencyJPY">¥ JPY</button>
-      <button id="currencyOFF" title="Hide all prices — keep chipset info and FOV filtering">🚫</button>
-    </div>
-  </div>
-  <div class="chipset-section" id="fxSection">
-    <div class="row-line">
-      <span class="label" id="fxLabel">FX rates (EUR→USD/JPY)</span>
-      <button id="refreshFx">Update</button>
-    </div>
-    <div class="status" id="fxStatus">loading…</div>
-  </div>
-  <div class="chipset-section" id="monthlySection">
-    <div class="row-line">
-      <span class="label" id="monthlyLabel">UPLOAD .XLS PRICELIST</span>
-      <button id="settingsBtn" title="Update monthly prices">Open</button>
-    </div>
-  </div>
-  <div class="chipset-section" id="chipsetSection">
-    <div class="row-line">
-      <span class="label" id="chipsetLabel">Chipset data (CamStreamer)</span>
-      <button id="refreshChipsets">Update</button>
-    </div>
-    <div class="status" id="chipsetStatus">loading…</div>
-  </div>
-  <footer id="footerSection">
-    <span id="footerText">Prices are Axis MSRP (list price), not street price. EUR is from the AXIS Price List, July 2026 (camera products only - EUR isn't available for non-camera categories like 2N, recorders, or accessories). USD for those same products is calculated from the EUR price at the EUR/USD rate in effect when this list was last generated (1 EUR ≈ 1.1387 USD, per xe.com on 2026-07-14) - it is not an independently published Axis USD price list, so treat it as an estimate. JPY is converted live from the EUR price using the current EUR/JPY reference rate (ECB, via api.frankfurter.dev), refreshed on the same weekly schedule as chipset data. Chipset info is sourced from CamStreamer's published app-compatibility list, not Axis. None of this refreshes automatically except chipset data and FX rates via the weekly background check or the Update button above.</span>
-  </footer>
+  <!-- Language and Currency moved to the Settings page (options.html), which
+       owns configuration; this drawer keeps only the data-refresh actions.
+       Both still work here through chrome.storage - popup.js guards every
+       lookup of the removed controls. -->
   <div class="link-row">
     <a href="https://www.axis.com/support/tools/product-selector" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h12M20 17h0"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="18" cy="17" r="2"/></svg><span>Selector</span></a>
     <a href="https://www.axis.com/products" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>Products</span></a>
@@ -965,13 +1045,13 @@ html[data-theme="dark"] .axis-map-nobasemap-note {
       <div class="angle-row">
         <div class="angle-label-row">
           <span id="angleFieldLabel">Required FoV</span>
+          <input type="range" id="angleSlider" min="0" max="360" step="1" value="0"
+                 title="Only show cameras that can cover at least this many degrees - a PTZ's full pan range counts, not just its lens width. Same requirement drawing a cone on the map sets.">
           <span class="angle-value-group">
             <input type="number" id="angleValueInput" min="0" max="360" step="1" value="0">
             <span>°</span>
           </span>
         </div>
-        <input type="range" id="angleSlider" min="0" max="360" step="1" value="0"
-               title="Only show cameras that can cover at least this many degrees - a PTZ's full pan range counts, not just its lens width. Same requirement drawing a cone on the map sets.">
       </div>
       <div class="search-wrap">
         <input id="search" type="text" placeholder="Search model or part number…" autofocus>
@@ -1014,6 +1094,8 @@ html[data-theme="dark"] .axis-map-nobasemap-note {
   <script src="i18n.js"></script>
   <script src="catalog-data.js"></script>
   <script src="chipset-data.js"></script>
+  <script src="os13-data.js"></script>
+  <script src="compute-data.js"></script>
   <script src="fov-data.js"></script>
   <script src="vendor/maplibre-gl-csp.js"></script>
   <script src="axis-map.js"></script>

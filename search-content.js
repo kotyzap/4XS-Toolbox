@@ -16,6 +16,15 @@
   let CHIPSETS = (typeof CHIPSET_DATA !== "undefined" && CHIPSET_DATA.chipsets) || {};
   const CAMSTREAMER_ACAPS_PRESET = ["ARTPEC-9", "ARTPEC-8", "ARTPEC-6/7"];
 
+  // A label naming a RANGE rather than a chip ("ARTPEC-6/7"). It carries no
+  // chipset information - that set is exactly CAMSTREAMER_ACAPS_PRESET - so
+  // where Axis has not published the real SoC we show what we actually know:
+  // CamStreamer app support.
+  function isChipsetGroupLabel(label) {
+    return label.indexOf("/") !== -1 || /\s\d-\d$/.test(label);
+  }
+
+
   // Japanese localization - see i18n.js (loaded first, per manifest.json)
   // for the isJapanese detection logic.
   const JA = {
@@ -277,6 +286,218 @@
     return demarined !== norm ? lookupChipset(demarined) : null;
   }
 
+  // ---------------------------------------------------------------------
+  // AXIS OS 13 verdict (os13-data.js, keys identical to
+  // CHIPSET_DATA.chipsets). The lookup here is EXACT ONLY - deliberately
+  // NOT lookupChipset()'s prefix/substring fallback. "M1137" and
+  // "M1137 Mk II" share one chipset bucket (ARTPEC-6/7) but not one OS 13
+  // verdict: the Mk II is ARTPEC-7 and upgrades, the original is ARTPEC-6
+  // and never will. A fuzzy hit would report the stranded model as fine,
+  // and telling an owner their camera upgrades when it cannot is the one
+  // error that costs money rather than time - see Preflight rule A9.
+  // Anything not matched exactly, or whose verdict is "unknown", gets no
+  // badge at all. No badge never reads as "no OS 13"; a wrong badge does.
+  // ---------------------------------------------------------------------
+
+  // os13-data.js is the bundled snapshot. background.js re-harvests the
+  // firmware tracks weekly into chrome.storage.local.os13Data and that
+  // overrides it live, the same way chipsetData overrides CHIPSET_DATA.
+  let OS13 = (typeof OS13_DATA !== "undefined" && OS13_DATA.models) || {};
+  const OS13_KEY = "axisShowOs13";
+  let showOs13 = true;
+
+  let os13Index = new Map();
+  function rebuildOs13Index() {
+    os13Index = new Map();
+    for (const key of Object.keys(OS13)) os13Index.set(normalizeBare(key), OS13[key]);
+  }
+  rebuildOs13Index();
+
+  // axis.com lists packaging, regional and optics variants as cards of their
+  // own: "AXIS Q6355-LE No Midspan", "AXIS M5000-G US", "AXIS Q1728 48 mm",
+  // "AXIS M3125-LVE Black". They are the same camera on the same firmware, so
+  // the verdict carries over - but ONLY when every extra token is packaging
+  // noise. "Mk II" is not noise: the M1137 and the M1137 Mk II are different
+  // products with opposite verdicts. That is exactly why this cannot reuse
+  // lookupChipset()'s prefix fallback, which would happily match them.
+  // Which trailing tokens may be trimmed when looking for the base model.
+  //
+  // Enumerating descriptors ("Camera", "Dome", "Corner", "Bispectral", ...)
+  // was a losing game - axis.com names cards from marketing copy. Inverted
+  // instead: an Axis model code ALWAYS carries a digit (Q8752-E, P3245-LVE,
+  // M12-free names like "Bispectral" never identify a product on their own),
+  // so a trailing token with no digit in it is decoration by construction.
+  // Digit-bearing tokens still need the explicit list below, because those
+  // are the ones that could be a model code.
+  //
+  // A Mk marker is excluded from both: "Mk II" is identity, not decoration.
+  // The original M1137 and the M1137 Mk II are different products with
+  // different OS 13 answers, so trimming "Mk II" would be the one error that
+  // costs the owner money (Preflight rule A9).
+  const OS13_MK_TOKEN = /^(?:MK|II|III|IV)$/;
+  const OS13_VARIANT_TOKEN = /^(?:\d+(?:\.\d+)?|\d+P|\d+HZ|M12|RJ45|I-CS|4K)$/;
+
+  function os13TrimmableToken(tok) {
+    if (OS13_MK_TOKEN.test(tok)) return false;
+    if (OS13_VARIANT_TOKEN.test(tok)) return true;
+    return !/\d/.test(tok);
+  }
+
+  function os13VariantOnly(rest) {
+    const tokens = rest.split(" ").filter(Boolean);
+    return tokens.length > 0 && tokens.every(os13TrimmableToken);
+  }
+
+  // Walk the name back a whole token at a time. Stop dead at the first token
+  // that is not packaging noise, so a non-variant suffix can never be trimmed
+  // away to reach a different product's entry.
+  function os13TrimVariant(norm) {
+    const tokens = norm.split(" ").filter(Boolean);
+    for (let i = tokens.length - 1; i > 0; i--) {
+      if (!os13VariantOnly(tokens.slice(i).join(" "))) return null;
+      const hit = os13Index.get(tokens.slice(0, i).join(" "));
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  // Raw entry, whatever its verdict. Used for the exact SoC, which is worth
+  // showing even when the OS 13 answer is unknown.
+  function os13Lookup(displayName) {
+    const norm = normalizeBare(displayName);
+    let entry = os13Index.get(norm);
+    if (!entry) {
+      // Same stainless/marine spelling fallback chipsetFor() uses.
+      const demarined = norm.replace(/-S([A-Z]+)\b/, "-$1");
+      if (demarined !== norm) entry = os13Index.get(demarined);
+    }
+    if (!entry) entry = os13TrimVariant(norm);
+    return entry || null;
+  }
+
+  function os13For(displayName) {
+    const entry = os13Lookup(displayName);
+    return entry && entry.v !== "unknown" ? entry : null;
+  }
+
+  // Axis's own SoC for this model ("ARTPEC-7", "ARTPEC-8 (x2)", "CV25"),
+  // where CamStreamer's data only has a collapsed bucket ("ARTPEC 6-9").
+  // DISPLAY ONLY: data-axis-chipset and the CamStreamer-support checkmark
+  // keep the bucket value, so chipset filtering and sorting are untouched.
+  function exactSocFor(displayName) {
+    const entry = displayName ? os13Lookup(displayName) : null;
+    return (entry && entry.p) || null;
+  }
+
+  // Aggregate (series) cards cover many models at once. Badge them only when
+  // every model agrees - a mixed series, or one holding any unknown, gets
+  // nothing rather than a verdict that is wrong for half of it.
+  function os13ForNames(names) {
+    if (!names || !names.length) return null;
+    let agreed = null;
+    for (const name of names) {
+      const entry = os13For(name);
+      if (!entry) return null;
+      if (agreed && agreed.v !== entry.v) return null;
+      agreed = agreed || entry;
+    }
+    return agreed;
+  }
+
+  function buildOs13Badge(entry, className) {
+    const ok = entry.v === "os13";
+    const span = document.createElement("span");
+    span.className = className + (ok ? " is-os13" : " is-no-os13");
+    span.textContent = ok ? "OS13 \u2705" : "OS13 \uD83D\uDEAB";
+    const parts = [ok
+      ? t("os13TooltipYes", "AXIS OS 13 supported")
+      : t("os13TooltipNo", "No AXIS OS 13 for this hardware - this camera stays on its current firmware")];
+    if (entry.p) parts.push(entry.p);
+    if (entry.e) parts.push(t("os13TooltipEofw", "firmware support until ") + entry.e);
+    span.title = parts.join(" - ");
+    return span;
+  }
+
+  function appendOs13Badge(row, displayName, className) {
+    if (!showOs13) return;
+    const entry = os13For(displayName);
+    if (entry) row.appendChild(buildOs13Badge(entry, className));
+  }
+
+  // ---------------------------------------------------------------------
+  // Compute capability (compute-data.js): DLPU / MLPU / none, from Axis's
+  // Q4 2026 comparison tables. NOT derivable from the chipset - ARTPEC-7 is
+  // mixed (2 DLPU, 4 MLPU, 11 none) and the S6LM onboard cameras are current
+  // products with no compute unit at all. A model absent from that table
+  // gets no badge rather than a guess, same rule as the OS 13 verdict.
+  // Shares the OS 13 name matching, including its Mk-marker guard.
+  // ---------------------------------------------------------------------
+
+  const COMPUTE = (typeof COMPUTE_DATA !== "undefined" && COMPUTE_DATA.models) || {};
+  const COMPUTE_KEY = "axisShowCompute";
+  let showCompute = true;
+
+  const computeIndex = new Map();
+  for (const key of Object.keys(COMPUTE)) computeIndex.set(normalizeBare(key), COMPUTE[key]);
+
+  function computeFor(displayName) {
+    const norm = normalizeBare(displayName);
+    let code = computeIndex.get(norm);
+    if (!code) {
+      const demarined = norm.replace(/-S([A-Z]+)\b/, "-$1");
+      if (demarined !== norm) code = computeIndex.get(demarined);
+    }
+    if (!code) {
+      const toks = norm.split(" ").filter(Boolean);
+      for (let i = toks.length - 1; i > 0 && !code; i--) {
+        if (!toks.slice(i).every(os13TrimmableToken)) break;
+        code = computeIndex.get(toks.slice(0, i).join(" "));
+      }
+    }
+    return code || null;
+  }
+
+  const COMPUTE_TEXT = { d: "DLPU", m: "MLPU", n: "NO DLPU" };
+  const COMPUTE_TIP = {
+    d: "Deep learning processing unit - runs deep-learning models on the camera",
+    m: "Machine learning processing unit - lighter than a DLPU, no deep-learning models",
+    n: "No machine-learning compute unit on this camera",
+  };
+
+  function buildComputeBadge(code, className) {
+    const span = document.createElement("span");
+    span.className =
+      className + (code === "d" ? " is-dlpu" : code === "m" ? " is-mlpu" : " is-nocompute");
+    span.textContent = COMPUTE_TEXT[code];
+    span.title =
+      t("computeTooltip" + code.toUpperCase(), COMPUTE_TIP[code]) +
+      t("computeTooltipSource", " (Axis comparison tables, Q4 2026)");
+    return span;
+  }
+
+  // Series aggregate, same unanimity rule as os13ForNames: a DLPU/MLPU badge
+  // on a heading that covers many models is only honest when every model in
+  // it has the same compute unit. One unknown model and the series gets
+  // nothing, because "DLPU" on a series where one camera has none is the
+  // kind of wrong that costs a sale.
+  function computeForNames(names) {
+    if (!names || !names.length) return null;
+    let agreed = null;
+    for (const name of names) {
+      const code = computeFor(name);
+      if (!code) return null;
+      if (agreed && agreed !== code) return null;
+      agreed = agreed || code;
+    }
+    return agreed;
+  }
+
+  function appendComputeBadge(row, displayName, className) {
+    if (!showCompute) return;
+    const code = computeFor(displayName);
+    if (code) row.appendChild(buildComputeBadge(code, className));
+  }
+
   function findMatch(displayName) {
     const norm = normalize(displayName);
     if (normIndex.has(norm)) {
@@ -517,14 +738,21 @@
         const chipset = chipsetFor(segment);
         if (chipset) {
           const acap = CAMSTREAMER_ACAPS_PRESET.includes(chipset);
+          const exact = exactSocFor(segment);
+          const asSupport = !exact && acap && isChipsetGroupLabel(chipset);
           const chipsetSpan = document.createElement("span");
           chipsetSpan.className = "axis-search-chipset-badge";
-          chipsetSpan.textContent = chipset + (acap ? " ✅" : "");
+          chipsetSpan.textContent = (exact || (asSupport ? "CamStreamer" : chipset)) +
+            (acap ? " ✅" : "");
           chipsetSpan.title =
-            t("chipsetTooltipPrefix", "Chipset (via CamStreamer app-compatibility data): ") + chipset +
+            (exact
+              ? t("chipsetTooltipExact", "System-on-chip (via Axis product data): ") + exact
+              : t("chipsetTooltipPrefix", "Chipset (via CamStreamer app-compatibility data): ") + chipset) +
             (acap ? t("chipsetTooltipCsSuffix", " — CamStreamer Support") : "");
           anchor.appendChild(chipsetSpan);
         }
+        appendOs13Badge(anchor, segment, "axis-search-os13-badge");
+        appendComputeBadge(anchor, segment, "axis-search-compute-badge");
       }
 
       // Only the price badge is suppressed when prices are hidden - the
@@ -589,6 +817,10 @@
       anchor.removeAttribute(PROCESSED_ATTR);
       const existingPrice = anchor.querySelector(".axis-search-price-badge");
       if (existingPrice) existingPrice.remove();
+      const existingCompute = anchor.querySelector(".axis-search-compute-badge");
+      if (existingCompute) existingCompute.remove();
+      const existingOs13 = anchor.querySelector(".axis-search-os13-badge");
+      if (existingOs13) existingOs13.remove();
       const existingChipset = anchor.querySelector(".axis-search-chipset-badge");
       if (existingChipset) existingChipset.remove();
     });
@@ -596,7 +828,7 @@
   }
 
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(["axisCurrency", "catalogOverride", "chipsetData", "fxRates", FAVORITES_KEY], (res) => {
+    chrome.storage.local.get(["axisCurrency", "catalogOverride", "chipsetData", "fxRates", "os13Data", OS13_KEY, COMPUTE_KEY, FAVORITES_KEY], (res) => {
       if (res && (res.axisCurrency === "USD" || res.axisCurrency === "GBP" || res.axisCurrency === "JPY" || res.axisCurrency === "EUR" || res.axisCurrency === "OFF")) {
         currentCurrency = res.axisCurrency;
       } else {
@@ -609,10 +841,17 @@
         }
       }
       if (res && res.fxRates) fxRates = res.fxRates;
+      // Default ON - absent key means never toggled, not opted out.
+      if (res && res[OS13_KEY] === false) showOs13 = false;
+      if (res && res[COMPUTE_KEY] === false) showCompute = false;
       applyCatalogOverride(res && res.catalogOverride);
       if (res && res.chipsetData && Object.keys(res.chipsetData).length > 0) {
         CHIPSETS = res.chipsetData;
         rebuildChipsetIndex();
+      }
+      if (res && res.os13Data && Object.keys(res.os13Data).length > 0) {
+        OS13 = res.os13Data;
+        rebuildOs13Index();
       }
       if (res && Array.isArray(res[FAVORITES_KEY])) favorites = new Set(res[FAVORITES_KEY]);
       refreshAllBadges();
@@ -637,9 +876,22 @@
           applyCatalogOverride(changes.catalogOverride.newValue);
           refreshAllBadges();
         }
+        if (changes[OS13_KEY]) {
+          showOs13 = changes[OS13_KEY].newValue !== false;
+          refreshAllBadges();
+        }
+        if (changes[COMPUTE_KEY]) {
+          showCompute = changes[COMPUTE_KEY].newValue !== false;
+          refreshAllBadges();
+        }
         if (changes.chipsetData) {
           CHIPSETS = changes.chipsetData.newValue || {};
           rebuildChipsetIndex();
+          refreshAllBadges();
+        }
+        if (changes.os13Data) {
+          OS13 = changes.os13Data.newValue || {};
+          rebuildOs13Index();
           refreshAllBadges();
         }
       });
