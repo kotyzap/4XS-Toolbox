@@ -21,434 +21,472 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --yellow: #FFC800;
-    --yellow-deep: #B78E00;
-    --void-fixed: #0E0E0E; /* always-dark text/border for elements sitting directly on the yellow accent (brand mark, ticker, step numbers) - constant across both themes so the brand mark reads the same either way */
+/* ---------------------------------------------------------------------------
+   4XS Toolbox — docs site
+   Visual language taken from the store banner (promo/tile-marquee-1400x560):
+   warm cream canvas, Poppins geometric display type, soft rounded cards, and
+   the extension's own badge chips (chipset / OS13 / DLPU / price) used as the
+   page's recurring motif. Archivo stays for running text — Poppins is a
+   display face and reads poorly at paragraph sizes.
+   --------------------------------------------------------------------------- */
+:root {
+  --yellow: #FFCC33;
+  --yellow-deep: #B07D00;
+  --void-fixed: #1A1A1A; /* always-dark ink for anything sitting on the yellow — constant across themes so the brand mark reads the same either way */
 
-    /* Light theme (default) */
-    --bg: #FAFAF7;
-    --bg-alt: #F0EFE8;
-    --surface: #FFFFFF;
-    --ink: #121212;
-    --mute: #56544D;
-    --mute-2: #7A7870;
-    --border: #DDDACF;
-    --border-strong: #C9C6B9;
-    --eyebrow: #8A6B00;
-    --grid-tint: rgba(18, 18, 18, 0.035);
-  }
+  --bg: #FBF7EC;
+  --bg-alt: #F5EFDF;
+  --surface: #FFFFFF;
+  --surface-2: #FFFDF8;
+  --ink: #1A1A1A;
+  --mute: #6B6659;
+  --border: #E8E0CC;
+  --border-strong: #D6CBB0;
+  --eyebrow: #96701A;
+  --shadow: 0 1px 2px rgba(26,22,10,.04), 0 8px 24px rgba(26,22,10,.06);
+  --shadow-lg: 0 2px 4px rgba(26,22,10,.05), 0 18px 48px rgba(26,22,10,.10);
 
-  html[data-theme="dark"] {
-    --bg: #0E0E0E;
-    --bg-alt: #1A1A1A;
-    --surface: #1E1E1E;
-    --ink: #F4F3EE;
-    --mute: #B9B8B2;
-    --mute-2: #9B9B9B;
-    --border: #2C2C2C;
-    --border-strong: #454545;
-    --eyebrow: #FFC800;
-    --grid-tint: rgba(244, 243, 238, 0.045);
-  }
+  --chip-os13: #2E7D4F;
+  --chip-dlpu: #2F5BD8;
 
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'Archivo', Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    line-height: 1.5;
-    transition: background 0.15s ease, color 0.15s ease;
-  }
-  a { color: inherit; }
-  img { max-width: 100%; display: block; }
-  code {
-    font-family: 'IBM Plex Mono', monospace;
-    background: var(--bg-alt);
-    border: 1px solid var(--border);
-    padding: 1px 6px;
-    font-size: 0.9em;
-    color: var(--ink);
-  }
-  ::selection { background: var(--yellow); color: var(--void-fixed); }
-  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
-  .mono { font-family: 'IBM Plex Mono', monospace; }
+  --r-sm: 10px;
+  --r: 16px;
+  --r-lg: 24px;
+  --r-pill: 999px;
 
-  /* ---------- Buttons ---------- */
-  .btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    text-decoration: none;
-    font-weight: 800;
-    font-size: 15px;
-    padding: 12px 24px;
-    letter-spacing: 0.01em;
-    border: 1px solid transparent;
-  }
-  .btn svg { width: 16px; height: 16px; fill: currentColor; }
-  .btn-primary { background: var(--yellow); color: var(--void-fixed); box-shadow: 4px 4px 0 var(--void-fixed); transition: transform 0.1s ease, box-shadow 0.1s ease; }
-  .btn-primary:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--void-fixed); }
-  .btn-ghost { background: transparent; color: var(--ink); border-color: var(--border-strong); font-weight: 700; }
-  .btn-ghost:hover { border-color: var(--yellow); color: var(--yellow-deep); }
-  html[data-theme="dark"] .btn-ghost:hover { color: var(--yellow); }
-  .btn-nav { background: var(--yellow); color: var(--void-fixed); font-weight: 800; font-size: 13px; padding: 9px 16px; }
-  .btn-nav:hover { background: #fff; }
+  --display: 'Poppins', 'Archivo', Helvetica, Arial, sans-serif;
+  --text: 'Archivo', Helvetica, Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
 
-  /* ---------- Theme toggle ---------- */
-  .theme-toggle {
-    width: 36px; height: 36px; flex: none;
-    display: flex; align-items: center; justify-content: center;
-    background: transparent; border: 1px solid var(--border); color: var(--ink);
-    cursor: pointer; padding: 0;
-  }
-  .theme-toggle:hover { border-color: var(--yellow); color: var(--yellow-deep); }
-  html[data-theme="dark"] .theme-toggle:hover { color: var(--yellow); }
-  .theme-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
-  .theme-toggle .icon-sun { display: none; }
-  .theme-toggle .icon-moon { display: block; }
-  html[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
-  html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+:root[data-theme="dark"] {
+  --bg: #15130F;
+  --bg-alt: #1D1A15;
+  --surface: #211E18;
+  --surface-2: #262219;
+  --ink: #F7F3E8;
+  --mute: #B5AE9D;
+  --border: #322D24;
+  --border-strong: #4A4335;
+  --eyebrow: var(--yellow);
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.28);
+  --shadow-lg: 0 2px 4px rgba(0,0,0,.35), 0 18px 48px rgba(0,0,0,.4);
+  --chip-os13: #4CAF79;
+  --chip-dlpu: #6E90F0;
+}
 
-  /* ---------- Language switch ---------- */
-  .lang-switch {
-    display: flex; align-items: center; flex: none;
-    border: 1px solid var(--border);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
-  }
-  .lang-switch a, .lang-switch span {
-    display: flex; align-items: center; justify-content: center;
-    height: 34px; padding: 0 9px;
-    text-decoration: none; color: var(--mute);
-  }
-  .lang-switch a:hover { color: var(--yellow-deep); }
-  html[data-theme="dark"] .lang-switch a:hover { color: var(--yellow); }
-  .lang-switch .is-current { background: var(--yellow); color: var(--void-fixed); font-weight: 700; }
-  .lang-switch .lang-sep { padding: 0; width: 1px; height: 34px; background: var(--border); }
+* { box-sizing: border-box; }
 
-  /* ---------- Nav ---------- */
-  header {
-    position: sticky; top: 0; z-index: 60;
-    background: var(--bg);
-    border-bottom: 4px solid var(--yellow);
-    transition: background 0.15s ease;
-  }
-  .nav-inner {
-    height: 64px;
-    display: flex; align-items: center; justify-content: space-between; gap: 20px;
-  }
-  .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-  .brand-mark {
-    width: 34px; height: 34px; flex: none;
-    background: var(--yellow);
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 900; font-size: 15px; color: var(--void-fixed); letter-spacing: -0.02em;
-  }
-  .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-  .brand-text .t1 { color: var(--ink); font-weight: 800; font-size: 15px; letter-spacing: 0.01em; }
-  .brand-text .t2 { color: var(--mute); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; }
-  .nav-links { display: flex; align-items: center; gap: 18px; }
-  .nav-links a:not(.btn-nav) { color: var(--mute); text-decoration: none; font-size: 13.5px; font-weight: 600; letter-spacing: 0.02em; }
-  .nav-links a:not(.btn-nav):hover { color: var(--yellow-deep); }
-  html[data-theme="dark"] .nav-links a:not(.btn-nav):hover { color: var(--yellow); }
-  .icon-github { width: 15px; height: 15px; fill: currentColor; }
-  .icon-github-link { color: var(--mute); display: flex; }
-  .icon-github-link:hover { color: var(--yellow-deep); }
-  html[data-theme="dark"] .icon-github-link:hover { color: var(--yellow); }
+html { scroll-behavior: smooth; }
 
-  /* ---------- Hero ---------- */
-  .hero {
-    background: var(--bg); color: var(--ink);
-    padding: 40px 28px 48px;
-    position: relative; overflow: hidden;
-    transition: background 0.15s ease;
-  }
-  .hero::before {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    background-image: repeating-linear-gradient(90deg, var(--grid-tint) 0, var(--grid-tint) 1px, transparent 1px, transparent 96px);
-  }
-  .hero .wrap { position: relative; }
-  .hero-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 36px; align-items: center; }
-  .hero-copy { min-width: 0; }
-  .tag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
-  .tag {
-    font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
-    padding: 6px 12px; border: 1px solid var(--border); color: var(--mute-2);
-  }
-  .tag-accent { color: var(--eyebrow); border-color: rgba(138,107,0,0.4); }
-  html[data-theme="dark"] .tag-accent { color: var(--yellow); border-color: rgba(255,200,0,0.45); }
-  .hero h1 {
-    margin: 0 0 14px; font-weight: 900; letter-spacing: -0.03em; line-height: 0.98;
-    font-size: clamp(28px, 3.6vw, 54px); max-width: 560px; text-transform: uppercase;
-  }
-  .hero h1 span { color: var(--yellow-deep); }
-  /* A trailing card that would otherwise leave a hole in the two-column grid
-     spans the full width instead, laid out side-by-side. */
-  .feature-card.card-wide {
-    grid-column: 1 / -1;
-    display: grid; grid-template-columns: 1fr 1fr; align-items: center;
-  }
-  .feature-card.card-wide .feature-figure { height: 100%; display: flex; align-items: center; justify-content: center; }
-  @media (max-width: 860px) {
-    .feature-card.card-wide { grid-template-columns: 1fr; }
-  }
-  /* Both hero lines are spans now (so the script can swap them per language),
-     but only the second one is the yellow one. */
-  .hero h1 #hero-h1a { color: var(--ink); }
-  html[data-theme="dark"] .hero h1 span { color: var(--yellow); }
-  /* Larger than the original 15.5px so the hero copy fills the left column
-     next to a tall screenshot. The width cap is lifted to the column width
-     (~547px), which at this size is around 60 characters per line - still
-     inside the comfortable 45-75 range for reading. */
-  .hero .sub { margin: 0 0 20px; max-width: 100%; font-size: 17.5px; line-height: 1.62; color: var(--mute); }
-  .hero .sub a { color: var(--ink); text-decoration-color: var(--yellow); }
-  .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
-  .stat-strip {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    border: 1px solid var(--border); border-bottom: none;
-    max-width: 760px;
-  }
-  .stat-strip div { padding: 8px 20px; border-right: 1px solid var(--border); }
-  .stat-strip div:last-child { border-right: none; }
-  .stat-num { font-weight: 900; font-size: 22px; color: var(--yellow-deep); letter-spacing: -0.02em; }
-  html[data-theme="dark"] .stat-num { color: var(--yellow); }
-  .stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
-  .hero-shot { margin: 0; border: 1px solid var(--border); background: var(--bg-alt); width: 100%; }
-  .hero-shot img { width: 100%; height: auto; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 17px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
 
-  /* ---------- Ticker ---------- */
-  .ticker {
-    background: var(--yellow); border-top: 1px solid var(--void-fixed); border-bottom: 1px solid var(--void-fixed);
-    overflow: hidden; padding: 10px 0;
-  }
-  .ticker-track {
-    display: flex; gap: 34px; white-space: nowrap;
-    font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; font-weight: 600; color: var(--void-fixed); letter-spacing: 0.04em;
-    width: max-content;
-    animation: ticker-scroll 32s linear infinite;
-  }
-  .ticker:hover .ticker-track { animation-play-state: paused; }
-  .ticker-track span { flex: none; }
-  .ticker-track .sep { opacity: 0.45; }
-  @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+h1, h2, h3, .brand-mark, .footer-mark, .stat-num, .btn, .tag, .eyebrow,
+.feature-kicker, .install-cta-mark, .install-cta-name, .source-tag, .nav-links a {
+  font-family: var(--display);
+}
 
-  /* ---------- Section heading ---------- */
-  .eyebrow-row { display: flex; align-items: baseline; gap: 18px; margin-bottom: 14px; }
-  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.2em; font-weight: 600; color: var(--eyebrow); }
-  html[data-theme="dark"] .eyebrow { color: var(--yellow); }
-  .rule { flex: 1; height: 1px; background: var(--border); }
-  .section-title { margin: 0 0 14px; font-weight: 900; letter-spacing: -0.025em; text-transform: uppercase; font-size: clamp(28px, 3.6vw, 46px); }
-  .section-sub { margin: 0 0 44px; max-width: 640px; font-size: 16px; line-height: 1.6; color: var(--mute); }
+a { color: inherit; }
+img { max-width: 100%; display: block; }
 
-  section { padding: 96px 28px; transition: background 0.15s ease; }
+code {
+  font-family: var(--mono);
+  font-size: .88em;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .12em .42em;
+}
 
-  /* ---------- Features ---------- */
-  .features { background: var(--bg); }
-  .feature-grid {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
-    background: var(--border); border: 1px solid var(--border);
-  }
-  .feature-card { background: var(--surface); border: none; box-shadow: none; display: flex; flex-direction: column; }
-  .feature-figure { margin: 0; border-bottom: 1px solid var(--border); }
-  .feature-figure-inset { background: var(--bg-alt); display: flex; justify-content: center; padding: 20px 20px 0; }
-  .feature-body { padding: 24px 26px 28px; }
-  .feature-kicker { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.18em; color: var(--eyebrow); font-weight: 600; margin-bottom: 8px; }
-  html[data-theme="dark"] .feature-kicker { color: var(--yellow); }
-  .feature-body h3 { margin: 0 0 10px; font-weight: 800; font-size: 21px; letter-spacing: -0.01em; }
-  .feature-body p { margin: 0; color: var(--mute); font-size: 15px; line-height: 1.6; }
-  .feature-body strong { color: var(--ink); }
+.wrap { width: min(1160px, 100% - 48px); margin-inline: auto; }
 
-  /* ---------- Sorting (live, checkbox-driven demo) ---------- */
-  .fovmap { background: var(--bg-alt); }
-  .fovmap-shot { margin: 32px 0 36px; border: 1px solid var(--border); background: var(--bg); box-shadow: none; }
-  .fovmap .updates-list { max-width: 900px; }
-  .sorting { background: var(--bg); }
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 24px;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1;
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--yellow); color: var(--void-fixed); box-shadow: 0 2px 0 rgba(0,0,0,.08); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255,204,51,.45); }
+.btn-ghost { background: transparent; color: var(--ink); border-color: var(--border-strong); }
+.btn-ghost:hover { background: var(--bg-alt); transform: translateY(-1px); }
+.btn-nav { padding: 10px 18px; font-size: 14px; background: var(--yellow); color: var(--void-fixed); }
+.btn-nav:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,204,51,.4); }
 
-  /* A real checkbox (not a decorative one) drives everything below it via
-     the CSS :checked + general-sibling combinator - no JS needed, and it
-     behaves like an actual checkbox (click, keyboard, screen reader) rather
-     than a fake button pretending to be one. */
-  .sort-toggle-row { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
-  .sort-checkbox {
-    appearance: none; -webkit-appearance: none;
-    width: 18px; height: 18px; flex: none;
-    border: 1px solid var(--mute-2);
-    background: var(--surface);
-    margin: 0; position: relative; cursor: pointer;
-  }
-  .sort-checkbox:checked { background: var(--ink); border-color: var(--ink); }
-  .sort-checkbox:checked::after {
-    content: ""; position: absolute; left: 5px; top: 2px;
-    width: 5px; height: 9px;
-    border: solid var(--yellow); border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-  }
-  .sort-toggle-label {
-    font-size: 15px; font-weight: 700; cursor: pointer; user-select: none;
-  }
-  .try-live-tag {
-    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em;
-    color: var(--eyebrow); background: rgba(138,107,0,0.12);
-    padding: 3px 9px; margin-left: 2px;
-  }
-  html[data-theme="dark"] .try-live-tag { color: var(--yellow); background: rgba(255,200,0,0.12); }
+/* ---------- header ---------- */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 68px; }
+.brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; }
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  border-radius: 11px;
+  background: var(--yellow);
+  color: var(--void-fixed);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -.02em;
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.brand-text .t1 { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
+.brand-text .t2 { font-size: 11px; color: var(--mute); letter-spacing: .01em; }
 
-  .compare-live { position: relative; border: 1px solid var(--border); background: var(--surface); }
-  .compare-live img { width: 100%; height: auto; display: block; }
-  .compare-live .shot-on { position: absolute; inset: 0; opacity: 0; transition: opacity 0.2s ease; }
-  .compare-live .shot-off { position: relative; opacity: 1; transition: opacity 0.2s ease; }
-  .sort-checkbox:checked ~ .compare-live .shot-off { opacity: 0; }
-  .sort-checkbox:checked ~ .compare-live .shot-on { opacity: 1; }
+.nav-links { display: flex; align-items: center; gap: 22px; }
+.nav-links a { text-decoration: none; font-size: 14.5px; font-weight: 500; color: var(--mute); transition: color .15s ease; }
+.nav-links a:hover { color: var(--ink); }
+.nav-links .btn-nav { color: var(--void-fixed); }
 
-  .live-caption { margin: 14px 0 0; font-size: 14px; color: var(--mute); }
-  .live-caption .caption-off { display: flex; align-items: center; gap: 10px; }
-  .live-caption .caption-on { display: none; align-items: center; gap: 10px; }
-  .sort-checkbox:checked ~ .live-caption .caption-off { display: none; }
-  .sort-checkbox:checked ~ .live-caption .caption-on { display: flex; }
-  .state-tag { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em; padding: 4px 10px; flex: none; }
-  .state-tag.off { background: var(--border); color: var(--ink); }
-  .state-tag.on { background: var(--yellow); color: var(--void-fixed); font-weight: 600; }
+.lang-switch { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 13px; font-weight: 500; }
+.lang-switch .is-current { background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px 9px; }
+.lang-sep { display: none; }
+.lang-switch a { color: var(--mute); }
 
-  /* ---------- Updates ---------- */
-  .updates { background: var(--bg-alt); }
-  .updates-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 48px; align-items: center; }
-  .updates-shot { margin: 0; border: 1px solid var(--border); background: var(--bg-alt); box-shadow: none; }
-  .updates-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
-  .updates-list li { font-size: 15px; line-height: 1.6; color: var(--mute); }
-  .updates-list strong { color: var(--ink); }
+.icon-github-link { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-pill); color: var(--mute); }
+.icon-github-link:hover { background: var(--bg-alt); color: var(--ink); }
+.icon-github { width: 17px; height: 17px; fill: currentColor; }
 
-  /* ---------- Install ---------- */
-  .install { background: var(--bg); }
-  .install-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: start; }
-  .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-  .steps li { display: flex; gap: 18px; padding: 16px 0; border-bottom: 1px solid var(--border); }
-  .steps li:last-child { border-bottom: none; }
-  .step-num {
-    flex: none; width: 32px; height: 32px; background: var(--void-fixed); color: var(--yellow);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 13px;
-  }
-  .step-text { font-size: 15.5px; line-height: 1.55; color: var(--mute); padding-top: 4px; }
-  .step-text strong { color: var(--ink); }
-  .step-text a { font-weight: 600; }
-  .install-shot { margin: 0; border: 1px solid var(--border); background: var(--bg-alt); box-shadow: none; }
-  .install-cta {
-    background: var(--surface); border: 1px solid var(--ink);
-    box-shadow: 5px 5px 0 var(--yellow);
-    padding: 30px 26px; text-align: center;
-  }
-  .install-cta-mark {
-    width: 56px; height: 56px; margin: 0 auto 16px;
-    background: var(--yellow); color: var(--void-fixed);
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 900; font-size: 22px; letter-spacing: -0.02em;
-  }
-  .install-cta-name { font-weight: 800; font-size: 16.5px; margin-bottom: 5px; }
-  .install-cta-meta {
-    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--mute); margin-bottom: 22px;
-  }
-  .install-cta .btn { width: 100%; justify-content: center; }
-  .install-cta-note { font-size: 13px; line-height: 1.55; color: var(--mute); margin: 16px 0 0; }
+.theme-toggle {
+  display: inline-grid; place-items: center;
+  width: 32px; height: 32px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--mute);
+  cursor: pointer;
+  padding: 0;
+}
+.theme-toggle:hover { color: var(--ink); border-color: var(--border-strong); }
+.theme-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+:root[data-theme="dark"] .icon-moon { display: none; }
+:root:not([data-theme="dark"]) .icon-sun { display: none; }
 
-  /* ---------- Sources ---------- */
-  .sources { background: var(--bg-alt); border-top: 1px solid var(--border); }
-  .sources-grid {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
-    background: var(--border); border: 1px solid var(--border);
-  }
-  .source-card { background: var(--surface); border: none; padding: 26px 26px 30px; }
-  .source-tag { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.16em; display: inline-block; padding: 5px 11px; font-weight: 600; margin-bottom: 16px; }
-  .source-tag.light { background: var(--yellow); color: var(--void-fixed); }
-  .source-tag.dark { background: var(--void-fixed); color: var(--yellow); }
-  .source-card p { margin: 0; color: var(--mute); font-size: 14.5px; line-height: 1.65; }
-  .source-card a { font-weight: 600; }
+/* ---------- hero ---------- */
+.hero { padding: 72px 0 56px; position: relative; }
+.hero::before {
+  content: "";
+  position: absolute; inset: 0 0 auto 0; height: 4px;
+  background: var(--yellow);
+}
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr); gap: 56px; align-items: center; }
 
-  /* ---------- Footer ---------- */
-  footer { background: var(--bg-alt); color: var(--mute); padding: 48px 28px 56px; border-top: 4px solid var(--yellow); }
-  .footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 24px; }
-  .footer-brand { max-width: 560px; }
-  .footer-brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .footer-mark { width: 26px; height: 26px; background: var(--yellow); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; color: var(--void-fixed); }
-  .footer-brand-row span.name { color: var(--ink); font-weight: 800; font-size: 14px; }
-  .footer-brand p { margin: 0; font-size: 12.5px; line-height: 1.6; }
-  .footer-links { display: flex; gap: 24px; font-size: 13.5px; font-weight: 600; }
-  .footer-links a { color: var(--mute); text-decoration: none; }
-  .footer-links a:hover { color: var(--yellow-deep); }
-  html[data-theme="dark"] .footer-links a:hover { color: var(--yellow); }
+.tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.tag {
+  font-size: 12px; font-weight: 600; letter-spacing: .01em;
+  padding: 6px 13px; border-radius: var(--r-pill);
+  background: var(--surface); border: 1px solid var(--border); color: var(--mute);
+}
+.tag-accent { background: var(--yellow); border-color: transparent; color: var(--void-fixed); }
 
-  @media (max-width: 860px) {
-    .install-grid, .feature-grid, .sources-grid, .updates-grid { grid-template-columns: 1fr; }
-    .hero-grid { grid-template-columns: 1fr; gap: 28px; }
-    .hero h1, .hero .sub { max-width: 100%; }
-    .stat-strip { grid-template-columns: repeat(2, 1fr); max-width: 100%; }
-    .stat-strip div:nth-child(2) { border-right: none; }
-  }
-  @media (max-width: 640px) {
-    .hero { padding-top: 28px; }
-    .nav-links a:not(.btn-nav):not(.icon-github-link) { display: none; }
-    section { padding: 64px 20px; }
-  }
+.hero h1 {
+  font-size: clamp(42px, 5.6vw, 68px);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -.028em;
+  margin: 0 0 20px;
+}
+#hero-h1b { color: var(--ink); }
+:root[data-theme="dark"] #hero-h1b { color: var(--yellow); }
 
-  /* ---------- v5.2 additions ---------- */
-  .shot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
-  .shot-pair figure { margin: 0; }
-  .shot-pair img { border: 1px solid var(--border); }
-  .shot-pair figcaption {
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--mute-2); padding-top: 10px;
-  }
-  .tool-row { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
-  .tool-row.flip > :first-child { order: 2; }
-  .tool-row img { border: 1px solid var(--border); }
-  .tool-copy h3 {
-    margin: 0 0 12px; font-size: clamp(22px, 2.4vw, 32px); font-weight: 900;
-    letter-spacing: -0.02em; text-transform: uppercase; line-height: 1.05;
-  }
-  .tool-copy p { margin: 0 0 14px; color: var(--mute); font-size: 15.5px; line-height: 1.65; }
-  .tool-copy p:last-child { margin-bottom: 0; }
-  .tool-copy strong { color: var(--ink); font-weight: 700; }
-  .spec-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-  .spec-list li {
-    padding-left: 20px; position: relative; color: var(--mute);
-    font-size: 14.5px; line-height: 1.55;
-  }
-  .spec-list li::before {
-    content: ""; position: absolute; left: 0; top: 8px;
-    width: 8px; height: 8px; background: var(--yellow);
-  }
-  .spec-list strong { color: var(--ink); font-weight: 700; }
-  .narrow-shot { max-width: 300px; margin: 0 auto; }
-  @media (max-width: 860px) {
-    .tool-row, .shot-pair { grid-template-columns: 1fr; gap: 24px; }
-    .tool-row.flip > :first-child { order: 0; }
-  }
-  .lang-hello {
-    margin: 0 0 14px; padding: 14px 16px;
-    border: 1px solid var(--border); background: var(--bg-alt);
-  }
-  .lang-hello .hello-line {
-    margin: 0 0 10px; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink);
-  }
-  .lang-hello .btn { font-size: 13.5px; padding: 10px 18px; }
-  .lang-hello[dir="rtl"] { text-align: right; }
-  .lang-flags { max-width: 274px; }
-  @media (max-width: 640px) {
-    /* The brand's second line ("Chrome & Firefox · v5.2") is long enough to
-       wrap into the nav controls on a phone - the name alone is enough there. */
-    .brand-text .t2 { display: none; }
-    /* Let the brand name ellipsize rather than letting a longer localized
-       CTA label ("Chrome に追加") push the nav past the viewport. */
-    .brand, .brand-text { min-width: 0; }
-    .brand-text .t1 { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .nav-inner { gap: 10px; }
-    .btn-nav { padding: 8px 12px; font-size: 12px; }
-    .shot-pair { gap: 20px; }
-  }
+.sub { font-size: 17.5px; color: var(--mute); margin: 0 0 28px; max-width: 58ch; }
+.sub strong { color: var(--ink); font-weight: 600; }
+.sub a { color: var(--ink); text-decoration-color: var(--yellow); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+.badge-strip { display: flex; flex-wrap: wrap; gap: 9px; margin: 0 0 30px; }
+.bchip {
+  font-family: var(--display);
+  font-weight: 600; font-size: 13.5px; line-height: 1;
+  padding: 9px 14px;
+  border-radius: var(--r-sm);
+  letter-spacing: -.005em;
+}
+.bchip-chipset { background: var(--ink); color: var(--bg); }
+.bchip-os13 { background: var(--chip-os13); color: #fff; }
+.bchip-dlpu { background: var(--chip-dlpu); color: #fff; }
+.bchip-price { background: var(--yellow); color: var(--void-fixed); }
+
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 40px; }
+
+.stat-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.stat-strip > div { padding: 18px 16px; border-left: 1px solid var(--border); }
+.stat-strip > div:first-child { border-left: 0; }
+.stat-num { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; color: var(--ink); }
+:root[data-theme="dark"] .stat-num { color: var(--yellow); }
+.stat-label { font-size: 11.5px; color: var(--mute); letter-spacing: .02em; margin-top: 2px; }
+
+.hero-shot {
+  margin: 0;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-lg);
+}
+.hero-shot img { border-radius: var(--r-sm); }
+
+/* ---------- ticker ---------- */
+.ticker {
+  background: var(--yellow);
+  color: var(--void-fixed);
+  overflow: hidden;
+  padding: 11px 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.ticker-track { display: flex; gap: 22px; white-space: nowrap; width: max-content; animation: slide 46s linear infinite; }
+.ticker-track .sep { opacity: .4; }
+@keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+
+/* ---------- section scaffolding ---------- */
+section { padding: 84px 0; }
+.features, .install { background: var(--bg); }
+.fovmap, .updates { background: var(--bg-alt); }
+.sorting, .sources { background: var(--bg); }
+
+.eyebrow-row { margin-bottom: 14px; }
+.eyebrow {
+  display: inline-block;
+  font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--eyebrow);
+  background: color-mix(in srgb, var(--yellow) 22%, transparent);
+  border-radius: var(--r-pill);
+  padding: 5px 13px;
+}
+.section-title {
+  font-size: clamp(30px, 3.6vw, 44px);
+  font-weight: 700; line-height: 1.1; letter-spacing: -.025em;
+  margin: 0 0 16px;
+}
+.section-sub { font-size: 17px; color: var(--mute); max-width: 70ch; margin: 0 0 40px; }
+
+/* ---------- feature cards ---------- */
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 22px; }
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.card-wide { grid-column: 1 / -1; }
+
+.feature-figure { margin: 0; background: var(--bg-alt); border-bottom: 1px solid var(--border); }
+.feature-figure img { width: 100%; }
+.feature-figure-inset { display: grid; place-items: center; padding: 26px 20px; }
+.feature-figure-inset img { border-radius: var(--r-sm); box-shadow: var(--shadow); }
+.lang-flags { box-shadow: none !important; }
+
+.feature-body { padding: 24px 26px 28px; }
+.feature-kicker {
+  font-size: 11px; font-weight: 600; letter-spacing: .1em;
+  color: var(--yellow-deep); margin-bottom: 9px;
+}
+:root[data-theme="dark"] .feature-kicker { color: var(--yellow); }
+.feature-body h3 { font-size: 21px; font-weight: 600; letter-spacing: -.015em; line-height: 1.25; margin: 0 0 10px; }
+.feature-body p { font-size: 15.5px; color: var(--mute); margin: 0 0 12px; }
+.feature-body p:last-child { margin-bottom: 0; }
+.feature-body strong { color: var(--ink); font-weight: 600; }
+
+.lang-hello {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  background: var(--bg-alt);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r);
+  padding: 15px 18px;
+  margin: 0 0 16px;
+}
+.hello-line { margin: 0 !important; font-family: var(--display); font-weight: 600; font-size: 16px; color: var(--ink) !important; }
+
+/* ---------- fov map ---------- */
+.fovmap-shot, .narrow-shot {
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+.fovmap-shot img, .narrow-shot img { border-radius: var(--r-sm); margin-inline: auto; }
+
+.spec-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.spec-list li {
+  position: relative;
+  padding-left: 30px;
+  font-size: 15.5px;
+  color: var(--mute);
+}
+.spec-list li::before {
+  content: "";
+  position: absolute; left: 0; top: .52em;
+  width: 16px; height: 16px;
+  border-radius: 5px;
+  background: var(--yellow);
+}
+.spec-list strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- two-column tool rows ---------- */
+.tool-row { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: 44px; align-items: center; }
+.tool-row.flip .tool-copy { order: -1; }
+.tool-row figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 18px; box-shadow: var(--shadow); }
+.tool-row figure img { border-radius: var(--r-sm); margin-inline: auto; }
+.tool-copy h3 { font-size: 24px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 12px; }
+.tool-copy p { color: var(--mute); margin: 0 0 18px; }
+.tool-copy strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- light / dark pair ---------- */
+.shot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.shot-pair figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 18px; box-shadow: var(--shadow); }
+.shot-pair img { border-radius: var(--r-sm); }
+.shot-pair figcaption { font-family: var(--display); font-size: 12.5px; font-weight: 600; color: var(--mute); text-align: center; margin-top: 12px; }
+
+/* ---------- install ---------- */
+.install-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); gap: 44px; align-items: start; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; counter-reset: s; }
+.steps li { display: flex; gap: 16px; align-items: flex-start; }
+.step-num {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  width: 30px; height: 30px;
+  border-radius: var(--r-pill);
+  background: var(--yellow); color: var(--void-fixed);
+  font-family: var(--display); font-weight: 700; font-size: 14px;
+}
+.step-text { font-size: 16px; color: var(--mute); padding-top: 3px; }
+.step-text strong { color: var(--ink); font-weight: 600; }
+.step-text a { color: var(--ink); text-decoration-color: var(--yellow); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+.install-cta {
+  display: grid; justify-items: center; gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 32px 26px;
+  text-align: center;
+}
+.install-cta-mark {
+  display: grid; place-items: center;
+  width: 56px; height: 56px;
+  border-radius: 17px;
+  background: var(--yellow); color: var(--void-fixed);
+  font-weight: 700; font-size: 18px; letter-spacing: -.02em;
+}
+.install-cta-meta { font-size: 13px; color: var(--mute); line-height: 1.5; }
+.install-cta-name { font-size: 18px; font-weight: 600; color: var(--ink); letter-spacing: -.015em; }
+.install-cta-note { font-size: 14px; color: var(--mute); }
+.install-cta-note a { color: var(--ink); text-decoration-color: var(--yellow); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+/* ---------- sources ---------- */
+.sources-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 20px; }
+.source-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  padding: 24px 24px 26px;
+}
+.source-card p { font-size: 15px; color: var(--mute); margin: 0; }
+.source-card strong { color: var(--ink); font-weight: 600; }
+.source-card a { color: var(--ink); text-decoration-color: var(--yellow); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.source-tag {
+  display: inline-block;
+  font-size: 11px; font-weight: 700; letter-spacing: .1em;
+  border-radius: var(--r-pill);
+  padding: 5px 12px;
+  margin-bottom: 14px;
+}
+.source-tag.light { background: var(--yellow); color: var(--void-fixed); }
+.source-tag.dark { background: var(--ink); color: var(--bg); }
+
+/* ---------- footer ---------- */
+footer { background: var(--bg-alt); border-top: 1px solid var(--border); padding: 54px 0 64px; }
+.footer-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 40px; align-items: start; }
+.footer-brand-row { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+.footer-mark {
+  display: grid; place-items: center;
+  width: 34px; height: 34px;
+  border-radius: 11px;
+  background: var(--yellow); color: var(--void-fixed);
+  font-weight: 700; font-size: 12px; letter-spacing: -.02em;
+}
+.footer-brand .name { font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: -.01em; }
+.footer-brand p { font-size: 13.5px; color: var(--mute); margin: 0; max-width: 68ch; line-height: 1.6; }
+.footer-brand a { color: var(--ink); text-decoration-color: var(--yellow); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.footer-links { display: grid; gap: 10px; justify-items: end; }
+.footer-links a { font-family: var(--display); font-size: 14px; font-weight: 500; color: var(--mute); text-decoration: none; }
+.footer-links a:hover { color: var(--ink); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1040px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+  .tool-row, .tool-row.flip { grid-template-columns: 1fr; gap: 28px; }
+  .tool-row.flip .tool-copy { order: 0; }
+  .install-grid { grid-template-columns: 1fr; gap: 32px; }
+  .nav-links a:not(.btn-nav):not(.icon-github-link) { display: none; }
+  .nav-links .lang-switch { display: none; }
+}
+@media (max-width: 720px) {
+  .wrap { width: min(1160px, 100% - 32px); }
+  body { font-size: 16px; }
+  section { padding: 56px 0; }
+  .hero { padding: 48px 0 40px; }
+  .stat-strip { grid-template-columns: 1fr 1fr; }
+  .stat-strip > div:nth-child(3) { border-left: 0; }
+  .stat-strip > div:nth-child(n+3) { border-top: 1px solid var(--border); }
+  .shot-pair { grid-template-columns: 1fr; }
+  .footer-inner { grid-template-columns: 1fr; }
+  .footer-links { justify-items: start; grid-auto-flow: column; grid-auto-columns: max-content; gap: 18px; flex-wrap: wrap; }
+  .hero-shot { padding: 14px; }
+  .feature-body { padding: 20px 20px 24px; }
+}
+@media (max-width: 560px) {
+  .brand-text { display: none; }
+  .btn-nav { padding: 9px 14px; font-size: 13px; }
+  .nav-links { gap: 12px; }
+}
+@media (max-width: 420px) {
+  .footer-links { grid-auto-flow: row; }
+  .btn { width: 100%; }
+  .cta-row { gap: 10px; }
+}
 </style>
 </head>
 <body>
@@ -481,7 +519,7 @@
         <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
         <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       </button>
-      <a class="btn btn-nav" href="https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener">Add to Chrome</a>
+      <a class="btn btn-nav" href="https://chromewebstore.google.com/detail/4xs-toolbox/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener">Add to Chrome</a>
     </nav>
   </div>
 </header>
@@ -496,8 +534,14 @@
         </div>
         <h1><span id="hero-h1a">Find the right</span><br><span id="hero-h1b">Axis camera.</span></h1>
         <p class="sub" id="hero-sub">Chipset, <strong>AXIS OS 13 readiness</strong>, <strong>DLPU / MLPU</strong>, list price and field of view — and what is already sitting on your network. 4XS Toolbox puts the facts you actually spec on next to every camera, in the places you are already looking: the <a href="https://www.axis.com/support/tools/product-selector" target="_blank" rel="noopener">Axis Product Selector</a>, <a href="https://www.axis.com/search" target="_blank" rel="noopener">axis.com search</a>, every product and category page, a toolbar popup that searches all 432 priced SKUs, and a map that picks cameras from the coverage you draw.</p>
+        <div class="badge-strip" aria-hidden="true">
+          <span class="bchip bchip-chipset">ARTPEC-9</span>
+          <span class="bchip bchip-os13">OS13</span>
+          <span class="bchip bchip-dlpu">DLPU</span>
+          <span class="bchip bchip-price">$1,369</span>
+        </div>
         <div class="cta-row">
-          <a class="btn btn-primary" id="hero-cta1" href="https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener">Add to Chrome — it&rsquo;s free</a>
+          <a class="btn btn-primary" id="hero-cta1" href="https://chromewebstore.google.com/detail/4xs-toolbox/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener">Add to Chrome — it&rsquo;s free</a>
           <a class="btn btn-ghost" id="hero-cta2" href="https://github.com/kotyzap/4XS-Toolbox" target="_blank" rel="noopener">Get the source</a>
         </div>
         <div class="stat-strip">
@@ -626,7 +670,7 @@
           <h3>Speaks your language</h3>
           <div class="lang-hello" id="lang-hello" hidden>
             <p class="hello-line" id="lang-hello-line"></p>
-            <a class="btn btn-primary" id="lang-hello-cta" href="https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener"></a>
+            <a class="btn btn-primary" id="lang-hello-cta" href="https://chromewebstore.google.com/detail/4xs-toolbox/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener"></a>
           </div>
           <p>Every string in the popup, the panel and the scanner is translated into <strong>twelve languages</strong> — English, Czech, Japanese, Spanish, German, French, Korean, Chinese, Swedish, Ukrainian, Arabic and Dutch. It picks one from your browser on first run; the flag row switches it any time.</p>
         </div>
@@ -726,7 +770,7 @@
             <div class="install-cta-name">4XS Toolbox</div>
             Chrome Web Store · free
           </div>
-          <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/axis-msrp-price-overlay/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener">Add to Chrome</a>
+          <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/4xs-toolbox/gnegcekipfaapeboifcejnjmfemfigpl" target="_blank" rel="noopener">Add to Chrome</a>
         </div>
         <p class="install-cta-note" style="margin-top:16px">Also on <a href="https://addons.mozilla.org/en-US/firefox/addon/axis-msrp-price-overlay/" target="_blank" rel="noopener" style="font-weight:600">addons.mozilla.org</a> for Firefox. Prefer to build it yourself? The full source is <a href="https://github.com/kotyzap/4XS-Toolbox" target="_blank" rel="noopener" style="font-weight:600">on GitHub</a>.</p>
       </div>
