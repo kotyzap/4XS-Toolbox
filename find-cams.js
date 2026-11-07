@@ -253,21 +253,38 @@
     return (name) => map.get(normModel(name)) || null;
   }
 
-  async function probe(ip, signal) {
+  // `tally` counts WHY each probe failed. An address with nothing on it times
+  // out, which is the normal case and says nothing. A probe that fails
+  // *immediately* with a TypeError never reached the wire at all - the request
+  // was refused by the browser or by something sitting in front of it (a VPN
+  // or proxy extension routing every request off-LAN, HTTPS-only mode, or a
+  // missing host permission, which is what denies the CORS preflight this
+  // POST needs). Those two look identical to the user - "0 found" - unless
+  // they are counted separately, which cost a whole debugging session once.
+  async function probe(ip, signal, tally) {
+    const note = (k) => { if (tally) tally.set(k, (tally.get(k) || 0) + 1); };
     const ctl = new AbortController();
     const onAbort = () => ctl.abort();
     signal.addEventListener("abort", onAbort, { once: true });
-    const timer = setTimeout(() => ctl.abort(), 1500);
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, 1500);
     try {
       const res = await fetch(`http://${ip}/axis-cgi/basicdeviceinfo.cgi`, {
         method: "POST", signal: ctl.signal, cache: "no-store",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ apiVersion: "1.0", method: "getAllUnrestrictedProperties" }),
       });
-      if (!res.ok) return null;
+      if (!res.ok) { note("http"); return null; }
       const p = (await res.json())?.data?.propertyList;
-      return p?.SerialNumber ? p : null;
-    } catch { return null; } finally { clearTimeout(timer); signal.removeEventListener("abort", onAbort); }
+      if (p?.SerialNumber) { note("ok"); return p; }
+      note("notAxis");
+      return null;
+    } catch (e) {
+      if (signal.aborted) note("cancelled");
+      else if (timedOut) note("timeout");
+      else note(e && e.name === "TypeError" ? "blocked" : "error");
+      return null;
+    } finally { clearTimeout(timer); signal.removeEventListener("abort", onAbort); }
   }
 
   function mount(root, opts = {}) {
@@ -295,6 +312,7 @@
     const subnetEl = q(".fc-subnet"), scanBtn = q(".fc-scan"), csvBtn = q(".fc-csv"), statusEl = q(".fc-status"), listEl = q(".fc-list"), progressEl = q(".fc-progress");
 
     let scanning = false, autoUpdating = false, abort = null, results = [], finishedAt = null, scannedSubnet = null;
+    let lastDiagnosis = null;
 
     function applyStrings() {
       scanBtn.textContent = scanning ? t("stop", "Stop") : finishedAt ? t("rescan", "Re-Scan") : t("scan", "Scan");
@@ -360,12 +378,13 @@
       statusEl.textContent = t("scanning", `Scanning… 0/${hosts.length} (${results.length} found)`, 0, hosts.length, results.length);
       if (!silent) render();
       const t0 = Date.now(); let done = 0;
+      const tally = new Map();
       const found = silent ? [...results] : [];
       const queue = [...hosts];
       const worker = async () => {
         while (queue.length && !abort.signal.aborted) {
           const ip = `${prefix}.${queue.shift()}`;
-          const info = await probe(ip, abort.signal);
+          const info = await probe(ip, abort.signal, tally);
           if (info) {
             const idx = found.findIndex((d) => d.ip === ip);
             const rec = { ip, ...info };
@@ -381,7 +400,18 @@
       scanning = false; autoUpdating = false; finishedAt = Date.now(); scannedSubnet = prefix;
       chrome.storage?.local.set({ findCamsCache: { subnet: prefix, devices: results, scannedAt: finishedAt } });
       const secs = ((finishedAt - t0) / 1000).toFixed(1);
-      statusEl.textContent = t("doneMsg", `${results.length} Axis device(s) found in ${secs} s`, results.length, secs);
+      const blocked = tally.get("blocked") || 0;
+      // Every probe refused outright, and none merely timed out: nothing this
+      // scan sent ever left the browser, so "no cameras here" is not an honest
+      // thing to report.
+      lastDiagnosis = (!results.length && blocked && !tally.get("timeout"))
+        ? t("blockedMsg",
+            `All ${blocked} requests were refused before leaving the browser, so nothing was actually scanned. Something is intercepting local-network requests - most often a VPN or proxy extension, or HTTPS-only mode. Turn it off for local addresses and scan again.`,
+            blocked)
+        : null;
+      statusEl.textContent = lastDiagnosis
+        ? t("blockedShort", `Could not scan - ${blocked} requests blocked`, blocked)
+        : t("doneMsg", `${results.length} Axis device(s) found in ${secs} s`, results.length, secs);
       applyStrings(); csvBtn.disabled = !results.length; progressEl.hidden = true;
       render();
     }
@@ -426,7 +456,8 @@
 
     function render() {
       if (!results.length) {
-        listEl.innerHTML = finishedAt ? `<div class="fc-empty">${esc(t("none", "No Axis devices answered. Check the subnet, and that HTTP is enabled on the cameras."))}</div>` : "";
+        const why = lastDiagnosis || t("none", "No Axis devices answered. Check the subnet, and that HTTP is enabled on the cameras.");
+        listEl.innerHTML = finishedAt ? `<div class="fc-empty">${esc(why)}</div>` : "";
         return;
       }
       listEl.innerHTML = results.map((d) => {
